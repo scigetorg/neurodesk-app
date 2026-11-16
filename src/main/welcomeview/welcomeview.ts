@@ -30,8 +30,8 @@ export class WelcomeView {
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
     );
 
-    const neurodeskLogo = fs.readFileSync(
-      path.join(__dirname, '../../../app-assets/neurodesk.svg')
+    const scigetLogo = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/sciget.svg')
     );
 
     // The catalog as it is now (cache or bundled); load() pushes the
@@ -161,15 +161,15 @@ export class WelcomeView {
             font-size: 30px;
           }
 
-          .neurodesk-logo svg {
-            width: 300px;
+          .sciget-logo svg {
+            height: 120px;
           }
 
-          .neurodesk-logo {
+          .sciget-logo {
             color: #0c0e0a;
           }
 
-          .app-ui-dark .neurodesk-logo {
+          .app-ui-dark .sciget-logo {
             color: #ffffff;
           }
 
@@ -186,16 +186,6 @@ export class WelcomeView {
             align-items: center;
             gap: 12px;
             margin-bottom: 16px;
-          }
-
-          .sciget-logo {
-            flex: 0 0 50px;
-          }
-
-          .sciget-logo svg {
-            display: block;
-            width: 50px;
-            height: 50px;
           }
 
           .announcement-heading .app-title {
@@ -606,8 +596,8 @@ export class WelcomeView {
           <div class="container">
             <div class="row app-logo-row">
               <div class="app-logo">
-                <div class="neurodesk-logo">
-                    ${neurodeskLogo}
+                <div class="sciget-logo">
+                    ${scigetLogo}
                 </div>
               </div>
             </div>
