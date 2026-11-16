@@ -15,6 +15,8 @@ permissions:
 jobs:
   update-homebrew-cask:
     runs-on: ubuntu-latest
+    env:
+      TAP_REPO: scigetorg/homebrew-sciget
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v6
@@ -103,7 +105,7 @@ jobs:
       #       version "${APP_VERSION}"
       #       sha256 arm: "${SHA256_ARM64}", intel: "${SHA256_X64}"
 
-      #       url "https://github.com/NeuroDesk/neurodesk-app/releases/download/v#{version}/NeurodeskApp-Setup-macOS-#{arch}.dmg"
+      #       url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/NeurodeskApp-Setup-macOS-#{arch}.dmg"
       #       name "NeurodeskApp"
       #       desc "Desktop application for neuroscience computing"
       #       homepage "https://neurodesk.org/"
@@ -131,10 +133,10 @@ jobs:
       #     **Name:** NeurodeskApp
       #     **Description:** Desktop application for neuroscience computing
       #     **Homepage:** https://neurodesk.org/
-      #     **Download:** https://github.com/NeuroDesk/neurodesk-app/releases
+      #     **Download:** https://github.com/scigetorg/neurodesk-app/releases
 
       #     - [x] macOS app (.dmg) with arm64 and x64 support
-      #     - [x] Open source: https://github.com/NeuroDesk/neurodesk-app
+      #     - [x] Open source: https://github.com/scigetorg/neurodesk-app
       #     PR_EOF
       #     )"
 
@@ -159,7 +161,7 @@ jobs:
           SHA256_ARM64=$(sha256sum NeurodeskApp-arm64.dmg | awk '{print $1}')
           SHA256_X64=$(sha256sum NeurodeskApp-x64.dmg | awk '{print $1}')
 
-          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${{ github.repository_owner }}/homebrew-neurodesk.git" tap
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP_REPO}.git" tap
           cd tap
 
           mkdir -p Casks
@@ -170,7 +172,7 @@ jobs:
             version "${APP_VERSION}"
             sha256 arm: "${SHA256_ARM64}", intel: "${SHA256_X64}"
 
-            url "https://github.com/NeuroDesk/neurodesk-app/releases/download/v#{version}/NeurodeskApp-Setup-macOS-#{arch}.dmg"
+            url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/NeurodeskApp-Setup-macOS-#{arch}.dmg"
             name "NeurodeskApp"
             desc "Desktop application for neuroscience computing"
             homepage "https://neurodesk.org/"
