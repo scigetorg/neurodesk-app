@@ -69,6 +69,7 @@ export enum EventTypeRenderer {
   ShowServerStatus = 'show-server-status',
   SetNewsList = 'set-news-list',
   SetNotificationMessage = 'set-notification-message',
+  SetMiniApps = 'set-mini-apps',
   DisableLocalServerActions = 'disable-local-server-actions',
   SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result'
 }
