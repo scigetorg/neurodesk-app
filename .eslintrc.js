@@ -114,6 +114,7 @@ module.exports = {
           'request_seq',
           'slide_type',
           'source_hidden',
+          'source_repositories',
           'shutdown_reply',
           'stop_on_error',
           'store_history',

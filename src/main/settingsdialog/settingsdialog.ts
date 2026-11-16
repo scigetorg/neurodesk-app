@@ -5,10 +5,8 @@ import * as ejs from 'ejs';
 import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import { ThemedWindow } from '../dialog/themedwindow';
-import {
-  getDefaultStorageDirectory,
-  readDefaultStorageMount
-} from '../config/storageMount';
+import { getDefaultStorageDirectory } from '../config/storageMount';
+import { defaultStorageMount } from '../config/catalogInstance';
 import {
   CtrlWBehavior,
   CvmfsMode,
@@ -478,7 +476,7 @@ export class SettingsDialog {
       neurodesktopStorageDirectory,
       defaultStoragePlaceholder: getDefaultStorageDirectory(
         process.platform,
-        readDefaultStorageMount(),
+        defaultStorageMount(),
         '~'
       ),
       logLevel,

@@ -657,4 +657,58 @@ describe('ContainerConfigParser', () => {
       expect(p.getImageVersion()).toBe(p.getDefaultImageVersion());
     });
   });
+
+  // ── Catalog entries and tag checks ──
+
+  describe('catalog entry input', () => {
+    const entry = {
+      title: 'microscopy',
+      description: 'Microscopy tools.',
+      registry: 'docker.io/example/micro',
+      defaultVersion: '2026-01-02',
+      containerName: 'microapp',
+      volumeMount: 'micro-home',
+      defaultStorageMount: 'micro-storage'
+    };
+
+    it('launches the entry it is given, without reading a yml file', () => {
+      const p = new ContainerConfigParser(baseConfigPath, entry);
+      expect(p.getImageName()).toBe('docker.io/example/micro:2026-01-02');
+      expect(p.getDefaultStorageMount()).toBe('micro-storage');
+    });
+
+    it('does not modify the entry', () => {
+      const copy = { ...entry };
+      new ContainerConfigParser(baseConfigPath, copy, '2027-01-01');
+      expect(copy).toEqual(entry);
+    });
+
+    it.each(['latest;rm -rf ~', '$(id)', 'a b', '-flag', 'x'.repeat(129)])(
+      'rejects the image tag %p, which reaches a shell command',
+      tag => {
+        expect(
+          () => new ContainerConfigParser(baseConfigPath, entry, tag)
+        ).toThrow(/Invalid image tag/);
+        const p = new ContainerConfigParser(baseConfigPath, entry);
+        expect(() => p.setImageVersion(tag)).toThrow(/Invalid image tag/);
+        expect(p.getImageVersion()).toBe('2026-01-02');
+      }
+    );
+
+    it('reads an unquoted date in a yml file as the tag string', () => {
+      const fs = require('fs');
+      const os = require('os');
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'parser-'));
+      const file = path.join(dir, 'dated.yml');
+      fs.writeFileSync(
+        file,
+        Object.entries({ ...entry, defaultVersion: '' })
+          .map(([k, v]) => `${k}: ${v || '2026-03-04'}`)
+          .join('\n')
+      );
+      expect(
+        new ContainerConfigParser(baseConfigPath, file).getImageName()
+      ).toBe('docker.io/example/micro:2026-03-04');
+    });
+  });
 });

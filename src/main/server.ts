@@ -27,6 +27,7 @@ import {
   VariableContext
 } from './config/containerConfigParser';
 import { getDefaultStorageDirectory } from './config/storageMount';
+import { requireContainerEntry } from './config/catalogInstance';
 
 export { getDefaultStorageDirectory } from './config/storageMount';
 
@@ -510,18 +511,13 @@ function createLaunchScript(
     __dirname,
     'config/baseContainerConfig.yml'
   );
-  const containerConfigPath = path.join(
-    __dirname,
-    '../container_installer',
-    containerConfigName + '.yml'
-  );
   log.debug(
-    `baseContainerConfigPath: ${baseContainerConfigPath}, containerConfigName: ${containerConfigPath}`
+    `baseContainerConfigPath: ${baseContainerConfigPath}, containerConfigName: ${containerConfigName}`
   );
 
   const parser = new ContainerConfigParser(
     baseContainerConfigPath,
-    containerConfigPath,
+    requireContainerEntry(containerConfigName),
     imageVersion
   );
 

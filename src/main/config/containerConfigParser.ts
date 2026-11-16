@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import { EngineType } from './settings';
 import { validateStorageMount } from './storageMount';
+import { TAG_PATTERN } from './containerCatalogSchema';
 
 export type PlatformType = 'windows' | 'unix';
 
@@ -103,19 +104,26 @@ export class ContainerConfigParser {
   private version: string;
   public isValid: boolean = true;
 
+  /**
+   * @param containerConfig a catalog entry, or the path of a container yml
+   * @param version image tag; defaults to the entry's defaultVersion
+   */
   constructor(
     baseContainerConfigPath?: string,
-    containerConfigName?: string,
+    containerConfig?: string | ContainerConfig,
     version?: string
   ) {
     this.baseContainerConfig = this.loadBaseContainerConfig(
       baseContainerConfigPath
     );
-    this.containerConfig = this.loadContainerConfig(containerConfigName);
+    this.containerConfig =
+      typeof containerConfig === 'string' || !containerConfig
+        ? this.loadContainerConfig(containerConfig as string)
+        : { ...containerConfig };
     this.containerConfig.defaultStorageMount = validateStorageMount(
       this.containerConfig.defaultStorageMount
     );
-    this.version = version || this.containerConfig.defaultVersion;
+    this.setImageVersion(version);
   }
 
   private loadBaseContainerConfig(configPath?: string): BaseContainerConfig {
@@ -143,6 +151,11 @@ export class ContainerConfigParser {
     try {
       const configContent = fs.readFileSync(containerConfigName, 'utf8');
       const config = yaml.load(configContent) as ContainerConfig;
+      // YAML reads an unquoted 2026-09-23 as a Date; the tag is the string.
+      const version: unknown = config?.defaultVersion;
+      if (version instanceof Date) {
+        config.defaultVersion = version.toISOString().split('T')[0];
+      }
       return config;
     } catch (error) {
       throw new Error(`Failed to parse containerConfig.yml: ${error}`);
@@ -476,7 +489,13 @@ export class ContainerConfigParser {
    * every subsequent substitution of {tag} and {imageRegistry}.
    */
   public setImageVersion(version?: string): void {
-    this.version = version || this.containerConfig.defaultVersion;
+    const tag = version || this.containerConfig.defaultVersion;
+    // The tag is substituted into a shell command and can come from the
+    // renderer (version menu, custom tag box), so it is checked here.
+    if (typeof tag !== 'string' || !TAG_PATTERN.test(tag)) {
+      throw new Error(`Invalid image tag: ${JSON.stringify(tag)}`);
+    }
+    this.version = tag;
   }
 
   /**

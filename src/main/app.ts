@@ -46,10 +46,11 @@ import { AuthDialog } from './authdialog/authdialog';
 import * as path from 'path';
 import { ConsentDialog } from './consentdialog/consentdialog';
 import { closeTelemetry, initTelemetry } from './telemetry';
+import { getDefaultStorageDirectory } from './config/storageMount';
 import {
-  getDefaultStorageDirectory,
-  readDefaultStorageMount
-} from './config/storageMount';
+  defaultStorageMount,
+  getContainerCatalog
+} from './config/catalogInstance';
 
 const release = require(path.join(__dirname, '..', 'package.json')).version;
 
@@ -248,7 +249,7 @@ export function getNeurodesktopStoragePath(): string {
   }
   return getDefaultStorageDirectory(
     process.platform,
-    readDefaultStorageMount(),
+    defaultStorageMount(),
     app.getPath('home')
   );
 }
@@ -277,6 +278,9 @@ export class JupyterApplication implements IApplication, IDisposable {
     });
 
     createNeurodesktopStorage();
+    // Fetch the hosted container catalog in the background; until it
+    // arrives, sessions use the cached or bundled one. Never rejects.
+    void getContainerCatalog().refresh();
 
     // create a server in advance
     // this._serverFactory.createFreeServer().catch(error => {
