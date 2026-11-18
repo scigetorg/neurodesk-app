@@ -1,9 +1,9 @@
 {
   "name": "neurodeskapp",
   "jlab_version": "4.0.0-1",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "tinyrange_version": "0.4.0",
-  "description": "Neurodesk App",
+  "description": "Sciget desktop app for scientific computing",
   "main": "./build/out/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -74,6 +74,11 @@
       "mimeTypes": [
         "application/x-ipynb+json"
       ],
+      "desktop": {
+        "entry": {
+          "Name": "Sciget"
+        }
+      },
       "extraResources": [
         {
           "from": "dist-resources/linux/neurodeskapp.sh",
@@ -119,6 +124,8 @@
     "nsis": {
       "oneClick": true,
       "artifactName": "${productName}-Setup.${ext}",
+      "shortcutName": "Sciget",
+      "uninstallDisplayName": "Sciget ${version}",
       "perMachine": false,
       "license": "LICENSE",
       "language": "1033",
@@ -128,6 +135,9 @@
     },
     "mac": {
       "category": "public.app-category.productivity",
+      "extendInfo": {
+        "CFBundleDisplayName": "Sciget"
+      },
       "target": [
         {
           "target": "dmg",

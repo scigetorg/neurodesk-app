@@ -1,5 +1,22 @@
 # Release Instructions
 
+## Sciget name transition
+
+The first Sciget-branded release is version 2.2.0. Publish it as a new version
+in the existing `scigetorg/neurodesk-app` repository so users of version 2.1.0
+can discover it. Keep the `neurodeskapp` package name, `NeurodeskApp` bundle and
+executable name, `org.neurodesk.neurodeskapp` app ID, and existing release asset
+names (including `latest.yml`). These are upgrade identifiers and paths, even
+though the displayed app name is Sciget. Keep signing with the existing identity.
+Older builds use the `NeuroDesk/neurodesk-app` release URL; verify that GitHub
+still redirects it to `scigetorg/neurodesk-app` before publishing.
+
+Before publishing, confirm that the signed Windows installer updates an existing
+installation, that the macOS ZIP updater replaces the existing app, and that the
+Linux package upgrades in place. Verify that settings and sessions are still
+present after each upgrade. The CI build and unit tests check the source-side
+compatibility contract but cannot substitute for these installer checks.
+
 ## Dependencies
 
 JupyterLab Desktop uses [tbump](https://github.com/dmerejkowsky/tbump) to bump JupyterLab and the application versions. You can install using:

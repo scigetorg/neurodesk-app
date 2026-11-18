@@ -608,7 +608,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.LaunchInstallerDownloadPage,
       () => {
         shell.openExternal(
-          'https://github.com/NeuroDesk/neurodesk-app/releases'
+          'https://github.com/scigetorg/neurodesk-app/releases'
         );
       }
     );
@@ -894,7 +894,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     // cache: no-store prevents serving a stale latest.yml across sessions.
     net
       .fetch(
-        'https://github.com/NeuroDesk/neurodesk-app/releases/latest/download/latest.yml',
+        'https://github.com/scigetorg/neurodesk-app/releases/latest/download/latest.yml',
         { cache: 'no-store' }
       )
       .then(async response => {

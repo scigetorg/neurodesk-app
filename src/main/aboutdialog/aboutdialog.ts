@@ -12,7 +12,7 @@ export class AboutDialog {
   constructor(options: AboutDialog.IOptions) {
     this._window = new ThemedWindow({
       isDarkTheme: options.isDarkTheme,
-      title: 'About Neurodesk Desktop',
+      title: 'About Sciget Desktop App',
       width: 400,
       height: 275,
       preload: path.join(__dirname, './preload.js')
@@ -71,7 +71,7 @@ export class AboutDialog {
           </div>
           <div class="app-title-version">
             <div class="app-title">
-              Neurodesk App
+              Sciget App
             </div>
             <div class="app-version">
               Version <%= version %>

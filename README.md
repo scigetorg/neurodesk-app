@@ -1,18 +1,18 @@
-# Neurodesk App
+# Sciget
 
 <!-- STATS_START -->
 
-[![Neurodesk App downloads stats](https://release-stats-graph-five.vercel.app/graph?owner=neurodesk&repo=neurodesk-app&theme=vue&from=2024-01-25)](https://github.com/neurodesk/release-stats-graph)
+[![Sciget downloads stats](https://release-stats-graph-five.vercel.app/graph?owner=neurodesk&repo=neurodesk-app&theme=vue&from=2024-01-25)](https://github.com/neurodesk/release-stats-graph)
 
 <!-- STATS_END -->
 
-Neurodesk App is the cross-platform desktop application for [Neurodesk](https://github.com/neurodesk/neurodesk-app). It is the quickest and easiest way to get started with Neurodesk on your personal computer, with the flexibility for advanced use cases.
+Sciget is a cross-platform desktop app for scientific computing. It includes [Neurodesk](https://neurodesk.org/) and other scientific apps.
 
-![Neurodesk App](media/neurodesk-app.png)
+![Sciget](media/neurodesk-app.png)
 
 ## Installing Docker
 
-Neurodesk App requires Docker to be installed on your computer. If you already have Docker installed, you can skip this step.
+Sciget requires Docker to be installed on your computer. If you already have Docker installed, you can skip this step.
 
 - [Docker Desktop for Windows](https://docs.docker.com/docker-for-windows/install/)
 - [Docker Desktop for Mac](https://docs.docker.com/docker-for-mac/install/)
@@ -21,24 +21,24 @@ Neurodesk App requires Docker to be installed on your computer. If you already h
 After installation, open a terminal (Linux/macOS) or command prompt (Windows) and run the following command to verify that Docker is working correctly:
 `docker --version`
 
-## Installing Neurodesk App
+## Installing Sciget
 
-If you have an existing Neurodesk App installation, please uninstall it first by following the [uninstall instructions](user-guide.md#uninstalling-neurodesk-app).
+Existing Neurodesk App installations can update in place. Keep the current installation and your settings; the app name changes to Sciget after the update. The installer filenames and `neurodeskapp` command retain their previous names for compatibility.
 
-- [Debian, Ubuntu Linux Installer](https://github.com/NeuroDesk/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-Debian.deb)
-- [Red Hat, Fedora, SUSE Linux Installer](https://github.com/NeuroDesk/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-Fedora.rpm)
+- [Debian, Ubuntu Linux Installer](https://github.com/scigetorg/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-Debian-x64.deb)
+- [Red Hat, Fedora, SUSE Linux Installer](https://github.com/scigetorg/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-Fedora-x64.rpm)
 - [Arch-based package via AUR](https://aur.archlinux.org/packages/neurodeskapp-bin)
-- [macOS Intel Installer](https://github.com/NeuroDesk/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-macOS-x64.dmg), [macOS Apple silicon Installer](https://github.com/neurodesk/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-macOS-arm64.dmg)
-- [Windows Installer](https://github.com/NeuroDesk/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-Windows.exe)
+- [macOS Intel Installer](https://github.com/scigetorg/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-macOS-x64.dmg), [macOS Apple silicon Installer](https://github.com/scigetorg/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-macOS-arm64.dmg)
+- [Windows Installer](https://github.com/scigetorg/neurodesk-app/releases/latest/download/NeurodeskApp-Setup-Windows.exe)
 
 > :warning: **On Microsoft edge**, follow these steps to download the executable file:
 > ![Microsoft Edge](/media/Neurodeskapp_Edge_Download.png)
 
-## Launching Neurodesk App
+## Launching Sciget
 
-Neurodesk App can be launched from the GUI of your operating system by clicking the application's icon or by using `neurodeskapp` command from the command line.
+Sciget can be launched from the GUI of your operating system by clicking the application's icon or by using the `neurodeskapp` command from the command line.
 
-Neurodesk App sets File Browser's root directory based on the launch method.
+Sciget sets File Browser's root directory based on the launch method.
 
 - If launched from the application icon on GUI or by using `neurodeskapp` command without any arguments, then the default working directory is set as the root directory. The default working directory is user home directory but it can be customized from the Settings dialog.
 
@@ -61,7 +61,7 @@ You can start a new session by using the links at the Start section of the Welco
 
 ### Add Custom Data Directory
 
-Neurodesk App stores its data in the following locations:
+Sciget stores its data in the following locations:
 
 - By default, /home/jovyan/neurodesktop-storage in the app (which is binded with local directory ~/neurodesktop-storage in Unix or C:/neurodesktop-storage in Windows)
 

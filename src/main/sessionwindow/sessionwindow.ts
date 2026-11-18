@@ -104,7 +104,7 @@ export class SessionWindow implements IDisposable {
       minWidth: 400,
       minHeight: 300,
       show: false,
-      title: 'Neurodesk',
+      title: 'Sciget',
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
       backgroundColor: this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor,
@@ -511,7 +511,7 @@ export class SessionWindow implements IDisposable {
             <div class="message-row">${error}</div>
             ${installEngineURL}
             <div class="message-row">
-              <a href="https://github.com/NeuroDesk/neurodesk-app/blob/master/user-guide.md#uninstalling-neurodesk-app">Or follow this instruction to uninstall and reinstall Neurodesk App</a>
+              <a href="https://github.com/scigetorg/neurodesk-app/blob/master/user-guide.md#uninstalling-sciget">Or follow these instructions to uninstall and reinstall Sciget</a>
             </div>
             <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowLogs}')">Show logs</a></div>
             <div class="message-row">

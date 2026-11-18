@@ -12,6 +12,14 @@ import { SettingType, userSettings } from './config/settings';
 
 const release = require(path.join(__dirname, '..', 'package.json')).version;
 
+function setDisplayNamePreservingUserData(displayName: string): void {
+  const userDataPath = app.getPath('userData');
+  app.setName(displayName);
+  app.setPath('userData', userDataPath);
+}
+
+setDisplayNamePreservingUserData('Sciget');
+
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
 
@@ -106,10 +114,10 @@ console.debug = log.debug;
 const thisYear = new Date().getFullYear();
 
 app.setAboutPanelOptions({
-  applicationName: 'Neurodesk App',
+  applicationName: 'Sciget',
   applicationVersion: release,
   version: release,
-  website: 'https://www.neurodesk.org/',
+  website: 'https://github.com/scigetorg/neurodesk-app',
   copyright: `© MIT License ${thisYear}`
 });
 

@@ -290,7 +290,7 @@ export class SettingsDialog {
                   <label>Crash and mini app reporting</label>
                 </div>
                 <div class="row">
-                  <jp-checkbox id='checkbox-telemetry' type='checkbox' <%= telemetryConsent === 'on' ? 'checked' : '' %>>Send crash reports and mini app selections to help improve Neurodesk</jp-checkbox>
+                  <jp-checkbox id='checkbox-telemetry' type='checkbox' <%= telemetryConsent === 'on' ? 'checked' : '' %>>Send crash reports and mini app selections to help improve Sciget</jp-checkbox>
                 </div>
                 <div class="row" style="opacity: 0.7; font-size: 12px; margin-top: 4px;">
                   <label>Includes error details, OS info, app logs, and the mini app and local or remote launch choice. Does not include a URL or image tag in app selection events.</label>

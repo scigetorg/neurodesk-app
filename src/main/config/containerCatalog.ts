@@ -70,7 +70,7 @@ const MAX_CATALOG_BYTES = 1024 * 1024;
  * it is published; until then the app uses its cache and bundled files only.
  */
 export const DEFAULT_CATALOG_URL =
-  'https://apps-json.scigetorg.workers.dev/domains.json';
+  'https://apps-catalog.scigetorg.workers.dev/domains.json';
 
 export class ContainerCatalog {
   private readonly _options: IContainerCatalogOptions;
