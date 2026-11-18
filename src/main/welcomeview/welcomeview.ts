@@ -108,6 +108,8 @@ export class WelcomeView {
           }
 
           .app-card {
+              display: flex;
+              flex-direction: column;
               background: white;
               border-radius: 4px;
               padding: 24px;
@@ -209,6 +211,7 @@ export class WelcomeView {
           .launch-buttons {
               display: flex;
               gap: 12px;
+              margin-top: auto;
           }
 
           .launch-btn {
