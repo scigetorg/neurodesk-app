@@ -79,6 +79,8 @@ export interface ContainerConfig {
   defaultStorageMount: string;
   description?: string;
   remoteUrl?: string[];
+  appJsonUrl?: string;
+  downloadUrls?: string[];
   tags?: string[];
 }
 

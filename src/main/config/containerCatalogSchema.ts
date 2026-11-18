@@ -42,7 +42,10 @@ export const DESCRIPTION_PATTERN = /^[^<>&]{1,2000}$/;
 export const HTTPS_URL_PATTERN = /^https:\/\/[^\s"'<>`\\/]+(?:\/[^\s"'<>`\\]*)?$/;
 
 export const MAX_REMOTE_URLS = 10;
+export const MAX_DOWNLOAD_URLS = 10;
 export const MAX_TAGS = 20;
+/** https URL template for SIF downloads; allows {file} placeholders. */
+export const DOWNLOAD_URL_PATTERN = /^https:\/\/[^\s"'<>`\\]+$/;
 
 export interface IContainerCatalogEntry extends ContainerConfig {
   /** Oldest app version that can launch this entry. */
@@ -138,6 +141,30 @@ export function validateCatalogEntry(
       fail(
         'remoteUrl',
         `must be a list of at most ${MAX_REMOTE_URLS} https URLs`
+      );
+    }
+  }
+
+  if (raw.appJsonUrl !== undefined) {
+    if (isHttpsUrl(raw.appJsonUrl)) {
+      entry.appJsonUrl = raw.appJsonUrl;
+    } else {
+      fail('appJsonUrl', 'must be an https URL');
+    }
+  }
+
+  if (raw.downloadUrls !== undefined) {
+    const urls = raw.downloadUrls;
+    if (
+      Array.isArray(urls) &&
+      urls.length <= MAX_DOWNLOAD_URLS &&
+      urls.every(u => typeof u === 'string' && DOWNLOAD_URL_PATTERN.test(u))
+    ) {
+      entry.downloadUrls = [...urls];
+    } else {
+      fail(
+        'downloadUrls',
+        `must be a list of at most ${MAX_DOWNLOAD_URLS} https URL templates`
       );
     }
   }

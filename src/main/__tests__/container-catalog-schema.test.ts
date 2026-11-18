@@ -73,6 +73,14 @@ const INVALID: Array<[string, string, unknown]> = [
   ['remote url with no host', 'remoteUrl', ['https:///path']],
   ['remote url string', 'remoteUrl', 'https://play.neurodesk.org/'],
   ['too many remote urls', 'remoteUrl', Array(11).fill('https://a.org/')],
+  ['http appJsonUrl', 'appJsonUrl', 'http://example.org/neuroimaging/apps.json'],
+  ['javascript appJsonUrl', 'appJsonUrl', 'javascript:alert(1)'],
+  ['appJsonUrl with quote', 'appJsonUrl', "https://a.org/x'y"],
+  ['download url not https', 'downloadUrls', ['http://example.org/{file}']],
+  ['download url with quote', 'downloadUrls', ["https://a.org/'{file}"]],
+  ['download url with backtick', 'downloadUrls', ['https://a.org/`{file}`']],
+  ['download url string', 'downloadUrls', 'https://example.org/{file}'],
+  ['too many download urls', 'downloadUrls', Array(11).fill('https://a.org/{file}')],
   ['tag label with markup', 'tags', ['<b>']],
   ['tags not a list', 'tags', 'mri'],
   ['minAppVersion not semver', 'minAppVersion', '2.1'],
@@ -354,6 +362,8 @@ describe('domains.schema.json agrees with validateCatalogEntry', () => {
     expectPattern('STORAGE_MOUNT_PATTERN', props.defaultStorageMount.pattern);
     expectPattern('HTTPS_URL_PATTERN', props.releaseHistoryUrl.pattern);
     expectPattern('HTTPS_URL_PATTERN', props.remoteUrl.items.pattern);
+    expectPattern('HTTPS_URL_PATTERN', props.appJsonUrl.pattern);
+    expectPattern('DOWNLOAD_URL_PATTERN', props.downloadUrls.items.pattern);
     expectPattern('TAG_LABEL_PATTERN', props.tags.items.pattern);
     expectPattern(
       'CONTAINER_ID_PATTERN',

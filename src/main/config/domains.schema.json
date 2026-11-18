@@ -93,6 +93,18 @@
             "pattern": "^https://[^\\s\"'<>`\\/]+(?:/[^\\s\"'<>`\\\\]*)?$"
           }
         },
+        "downloadUrls": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "pattern": "^https://[^\\s\"'<>`\\\\]+$"
+          }
+        },
+        "appJsonUrl": {
+          "type": "string",
+          "pattern": "^https://[^\\s\"'<>`\\/]+(?:/[^\\s\"'<>`\\\\]*)?$"
+        },
         "tags": {
           "type": "array",
           "maxItems": 20,
