@@ -363,9 +363,9 @@ jobs:
             fi
 
             if [ "$ENGINE" = "docker" ] || [ "$ENGINE" = "podman" ]; then
-              CONTAINER=$($ENGINE ps --filter "name=scigetapp" --format "{{.Names}}" | head -1)
+              CONTAINER=$($ENGINE ps --filter "name=neurodesktop" --format "{{.Names}}" | head -1)
               if [ -n "$CONTAINER" ]; then
-                # Container name is fixed "scigetapp" — get port from published port mapping
+                # Container name is fixed "neurodesktop" — get port from published port mapping
                 PORT=$($ENGINE inspect "$CONTAINER" --format '{{range $p, $conf := .NetworkSettings.Ports}}{{range $conf}}{{.HostPort}}{{"\n"}}{{end}}{{end}}' | grep -oE '[0-9]+' | head -1)
                 TOKEN=$($ENGINE inspect "$CONTAINER" --format '{{json .Config.Cmd}}' | grep -oE "jlab:srvr:[a-f0-9]+")
                 echo "Container found: $CONTAINER (port=$PORT) after $((i * 5))s"
@@ -402,7 +402,7 @@ jobs:
           done
 
           if [ -z "$CONTAINER" ] && [ "$ENGINE" != "tinyrange" ]; then
-            echo "FAIL: No scigetapp container appeared within 30 minutes"
+            echo "FAIL: No neurodesktop container appeared within 30 minutes"
             echo "=== App process status ==="
             ps -p "$APP_PID" -o pid,stat,command 2>/dev/null || echo "App process no longer running"
             exit 1
@@ -655,7 +655,7 @@ jobs:
           # Remove any leftover containers (Docker/Podman)
           if [ "$ENGINE" = "docker" ] || [ "$ENGINE" = "podman" ]; then
             if $ENGINE info &>/dev/null; then
-              $ENGINE ps -a --filter "name=scigetapp" --format "{{.Names}}" | while read name; do
+              $ENGINE ps -a --filter "name=neurodesktop" --format "{{.Names}}" | while read name; do
                 $ENGINE rm -f "$name" 2>/dev/null || true
               done
               $ENGINE volume rm neurodesk-home 2>/dev/null || true
