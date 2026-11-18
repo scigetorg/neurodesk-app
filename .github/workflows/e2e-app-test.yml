@@ -319,7 +319,7 @@ jobs:
           echo "Launched app with PID $APP_PID, engine=${{ matrix.cfg.engine }}, working dir: $WORKING_DIR"
 
       - name: 'Select Neurodesk mini app for local launch'
-        run: python3 scripts/select_e2e_mini_app.py neurodesk --port 9222
+        run: python3 scripts/select_e2e_mini_app.py neuroimaging --port 9222
 
       # ───────────────────────────────────────────────
       # App orchestration tests
