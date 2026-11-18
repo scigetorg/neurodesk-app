@@ -160,7 +160,7 @@ describe('ContainerConfigParser', () => {
       expect(imageIdx).toBeGreaterThan(-1);
       const flagsBefore = args.slice(0, imageIdx).join(' ');
       const after = args.slice(imageIdx + 1).join(' ');
-      expect(flagsBefore).toContain('--security-opt apparmor=neurodeskapp');
+      expect(flagsBefore).toContain('--security-opt apparmor=scigetapp');
       expect(flagsBefore).toContain('--volume "/mnt/scratch":/data');
       // Only the container command may follow the image.
       expect(after.startsWith('start.sh jupyter lab')).toBe(true);
@@ -529,7 +529,7 @@ describe('ContainerConfigParser', () => {
     it('adds the apparmor profile for Docker on Ubuntu >= 23.10', () => {
       expect(
         parser.getConditionalRunArgs(EngineType.Docker, 'unix', '2404')
-      ).toContain('--security-opt apparmor=neurodeskapp');
+      ).toContain('--security-opt apparmor=scigetapp');
     });
 
     it('omits it below the version floor', () => {

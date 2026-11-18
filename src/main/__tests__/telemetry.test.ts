@@ -20,7 +20,7 @@ jest.mock('electron', () => ({
     getPath: (name: string) => {
       if (name === 'home') return '/Users/testuser';
       if (name === 'userData')
-        return '/Users/testuser/Library/Application Support/neurodeskapp';
+        return '/Users/testuser/Library/Application Support/scigetapp';
       return '/tmp';
     },
     getVersion: () => '2.0.0',

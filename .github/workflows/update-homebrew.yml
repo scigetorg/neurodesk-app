@@ -1,4 +1,4 @@
-name: Update Homebrew Cask for NeurodeskApp
+name: Update Homebrew Cask for Sciget
 
 on:
   push:
@@ -50,7 +50,7 @@ jobs:
         if: steps.release-exists.outputs.result == 'true'
         id: cask-exists
         run: |
-          if brew info --cask neurodeskapp &>/dev/null; then
+          if brew info --cask scigetapp &>/dev/null; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
@@ -63,7 +63,7 @@ jobs:
           APP_VERSION: ${{ steps.package-info.outputs.version }}
         run: |
           set -eux
-          brew bump-cask-pr neurodeskapp \
+          brew bump-cask-pr scigetapp \
             --version "${APP_VERSION}" \
             --no-browse \
             --no-audit
@@ -78,11 +78,11 @@ jobs:
           TAG="v${APP_VERSION}"
           BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
-          curl -fSL -o NeurodeskApp-arm64.dmg "${BASE_URL}/NeurodeskApp-Setup-macOS-arm64.dmg"
-          curl -fSL -o NeurodeskApp-x64.dmg "${BASE_URL}/NeurodeskApp-Setup-macOS-x64.dmg"
+          curl -fSL -o ScigetApp-arm64.dmg "${BASE_URL}/ScigetApp-Setup-macOS-arm64.dmg"
+          curl -fSL -o ScigetApp-x64.dmg "${BASE_URL}/ScigetApp-Setup-macOS-x64.dmg"
 
-          echo "sha256_arm64=$(sha256sum NeurodeskApp-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "sha256_x64=$(sha256sum NeurodeskApp-x64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha256_arm64=$(sha256sum ScigetApp-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha256_x64=$(sha256sum ScigetApp-x64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       # - name: Create new cask PR
       #   if: steps.release-exists.outputs.result == 'true' && steps.cask-exists.outputs.exists == 'false'
@@ -96,41 +96,41 @@ jobs:
       #     gh repo fork Homebrew/homebrew-cask --clone --remote
       #     cd homebrew-cask
 
-      #     git checkout -b "add-neurodeskapp-${APP_VERSION}"
+      #     git checkout -b "add-scigetapp-${APP_VERSION}"
 
-      #     cat > Casks/n/neurodeskapp.rb << EOF
-      #     cask "neurodeskapp" do
+      #     cat > Casks/n/scigetapp.rb << EOF
+      #     cask "scigetapp" do
       #       arch arm: "arm64", intel: "x64"
 
       #       version "${APP_VERSION}"
       #       sha256 arm: "${SHA256_ARM64}", intel: "${SHA256_X64}"
 
-      #       url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/NeurodeskApp-Setup-macOS-#{arch}.dmg"
-      #       name "NeurodeskApp"
+      #       url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/ScigetApp-Setup-macOS-#{arch}.dmg"
+      #       name "Sciget"
       #       desc "Desktop application for neuroscience computing"
       #       homepage "https://neurodesk.org/"
 
       #       depends_on macos: ">= :catalina"
 
-      #       app "NeurodeskApp.app"
+      #       app "ScigetApp.app"
 
       #       zap trash: [
-      #         "~/Library/Application Support/neurodeskapp",
-      #         "~/Library/Preferences/org.neurodesk.neurodeskapp.plist",
-      #         "~/Library/Saved Application State/org.neurodesk.neurodeskapp.savedState",
+      #         "~/Library/Application Support/scigetapp",
+      #         "~/Library/Preferences/org.neurodesk.scigetapp.plist",
+      #         "~/Library/Saved Application State/org.neurodesk.scigetapp.savedState",
       #       ]
       #     end
       #     EOF
 
-      #     git add Casks/n/neurodeskapp.rb
-      #     git commit -m "Add neurodeskapp ${APP_VERSION}"
-      #     git push origin "add-neurodeskapp-${APP_VERSION}"
+      #     git add Casks/n/scigetapp.rb
+      #     git commit -m "Add scigetapp ${APP_VERSION}"
+      #     git push origin "add-scigetapp-${APP_VERSION}"
 
       #     gh pr create \
       #       --repo Homebrew/homebrew-cask \
-      #       --title "Add neurodeskapp ${APP_VERSION}" \
+      #       --title "Add scigetapp ${APP_VERSION}" \
       #       --body "$(cat <<'PR_EOF'
-      #     **Name:** NeurodeskApp
+      #     **Name:** ScigetApp
       #     **Description:** Desktop application for neuroscience computing
       #     **Homepage:** https://neurodesk.org/
       #     **Download:** https://github.com/scigetorg/neurodesk-app/releases
@@ -151,48 +151,48 @@ jobs:
           BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
           # Reuse existing DMGs or download fresh
-          if [ ! -f NeurodeskApp-arm64.dmg ]; then
-            curl -fSL -o NeurodeskApp-arm64.dmg "${BASE_URL}/NeurodeskApp-Setup-macOS-arm64.dmg"
+          if [ ! -f ScigetApp-arm64.dmg ]; then
+            curl -fSL -o ScigetApp-arm64.dmg "${BASE_URL}/ScigetApp-Setup-macOS-arm64.dmg"
           fi
-          if [ ! -f NeurodeskApp-x64.dmg ]; then
-            curl -fSL -o NeurodeskApp-x64.dmg "${BASE_URL}/NeurodeskApp-Setup-macOS-x64.dmg"
+          if [ ! -f ScigetApp-x64.dmg ]; then
+            curl -fSL -o ScigetApp-x64.dmg "${BASE_URL}/ScigetApp-Setup-macOS-x64.dmg"
           fi
 
-          SHA256_ARM64=$(sha256sum NeurodeskApp-arm64.dmg | awk '{print $1}')
-          SHA256_X64=$(sha256sum NeurodeskApp-x64.dmg | awk '{print $1}')
+          SHA256_ARM64=$(sha256sum ScigetApp-arm64.dmg | awk '{print $1}')
+          SHA256_X64=$(sha256sum ScigetApp-x64.dmg | awk '{print $1}')
 
           git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP_REPO}.git" tap
           cd tap
 
           mkdir -p Casks
-          cat > Casks/neurodeskapp.rb << EOF
-          cask "neurodeskapp" do
+          cat > Casks/scigetapp.rb << EOF
+          cask "scigetapp" do
             arch arm: "arm64", intel: "x64"
 
             version "${APP_VERSION}"
             sha256 arm: "${SHA256_ARM64}", intel: "${SHA256_X64}"
 
-            url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/NeurodeskApp-Setup-macOS-#{arch}.dmg"
-            name "NeurodeskApp"
-            desc "Desktop application for neuroscience computing"
-            homepage "https://neurodesk.org/"
+            url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/ScigetApp-Setup-macOS-#{arch}.dmg"
+            name "Sciget"
+            desc "Desktop application for scientific computing"
+            homepage "https://sciget.org/"
 
             depends_on macos: ">= :catalina"
 
-            app "NeurodeskApp.app"
+            app "ScigetApp.app"
 
             zap trash: [
-              "~/Library/Application Support/neurodeskapp",
-              "~/Library/Preferences/org.neurodesk.neurodeskapp.plist",
-              "~/Library/Saved Application State/org.neurodesk.neurodeskapp.savedState",
+              "~/Library/Application Support/scigetapp",
+              "~/Library/Preferences/org.neurodesk.scigetapp.plist",
+              "~/Library/Saved Application State/org.neurodesk.scigetapp.savedState",
             ]
           end
           EOF
 
           git config user.name "Neurodesk Desktop Bot"
           git config user.email "neurodesk-bot@users.noreply.github.com"
-          git add Casks/neurodeskapp.rb
+          git add Casks/scigetapp.rb
           git diff --cached --quiet || {
-            git commit -m "Update neurodeskapp to v${APP_VERSION}"
+            git commit -m "Update scigetapp to v${APP_VERSION}"
             git push origin main
           }

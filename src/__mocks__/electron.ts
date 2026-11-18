@@ -1,6 +1,6 @@
 export const app = {
   getPath: (name: string) => `/tmp/mock-electron/${name}`,
-  getName: () => 'NeurodeskApp',
+  getName: () => 'ScigetApp',
   getVersion: () => '0.0.0-test',
   on: jest.fn(),
   quit: jest.fn()

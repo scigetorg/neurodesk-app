@@ -123,7 +123,7 @@ launchArgs:
 #   minOsVersion:        numeric host OS version floor (Ubuntu YYMM, e.g. 2310);
 #                        never matches when the OS version is unknown
 conditionalRunArgs:
-  - arg: '--security-opt apparmor=neurodeskapp'
+  - arg: '--security-opt apparmor=scigetapp'
     engines:
       - docker
     minOsVersion: 2310

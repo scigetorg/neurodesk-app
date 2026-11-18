@@ -43,16 +43,16 @@ require('fix-path')();
 
 function parseArgs(argv: string[]) {
   return yargs(argv)
-    .usage('neurodeskapp [options] folder/file paths')
-    .example('neurodeskapp', 'Launch in default working directory')
-    .example('neurodeskapp .', 'Launch in current directory')
+    .usage('scigetapp [options] folder/file paths')
+    .example('scigetapp', 'Launch in default working directory')
+    .example('scigetapp .', 'Launch in current directory')
     .example(
-      'neurodeskapp /data/nb/test.ipynb',
+      'scigetapp /data/nb/test.ipynb',
       'Launch in /data/nb and open test.ipynb'
     )
-    .example('neurodeskapp /data/nb', 'Launch in /data/nb')
+    .example('scigetapp /data/nb', 'Launch in /data/nb')
     .example(
-      'neurodeskapp --working-dir /data/nb test.ipynb sub/test2.ipynb',
+      'scigetapp --working-dir /data/nb test.ipynb sub/test2.ipynb',
       'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
     )
     .option('working-dir', {
@@ -153,8 +153,8 @@ function setupJLabCommand() {
     return;
   }
 
-  const symlinkPath = '/usr/local/bin/neurodeskapp';
-  const targetPath = `${getAppDir()}/app/neurodeskapp`;
+  const symlinkPath = '/usr/local/bin/scigetapp';
+  const targetPath = `${getAppDir()}/app/scigetapp`;
 
   if (!fs.existsSync(targetPath)) {
     return;

@@ -285,7 +285,7 @@ describe('generateLaunchScript', () => {
           osVersion: '2310'
         })
       );
-      expect(script).toContain('--security-opt apparmor=neurodeskapp');
+      expect(script).toContain('--security-opt apparmor=scigetapp');
     });
 
     it('includes apparmor for Docker containers on 2404', () => {
@@ -295,7 +295,7 @@ describe('generateLaunchScript', () => {
           osVersion: '2404'
         })
       );
-      expect(script).toContain('--security-opt apparmor=neurodeskapp');
+      expect(script).toContain('--security-opt apparmor=scigetapp');
     });
 
     it('does not include apparmor for osVersion < 2310', () => {

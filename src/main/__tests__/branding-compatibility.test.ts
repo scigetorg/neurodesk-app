@@ -8,9 +8,9 @@ const pkg = JSON.parse(
 
 describe('Sciget upgrade compatibility', () => {
   it('keeps installer and update identifiers used by existing installations', () => {
-    expect(pkg.name).toBe('neurodeskapp');
+    expect(pkg.name).toBe('scigetapp');
     expect(pkg.build.appId).toBe('org.neurodesk.neurodeskapp');
-    expect(pkg.build.productName).toBe('NeurodeskApp');
+    expect(pkg.build.productName).toBe('ScigetApp');
     expect(pkg.build.artifactName).toBe('${productName}.${ext}');
     expect(pkg.build.nsis.artifactName).toBe('${productName}-Setup.${ext}');
     expect(pkg.build.mac.artifactName).toBe('${productName}-${arch}.${ext}');
@@ -24,9 +24,9 @@ describe('Sciget upgrade compatibility', () => {
       'utf8'
     );
     for (const asset of [
-      'NeurodeskApp-Setup-Windows.exe',
-      'NeurodeskApp-macOS-arm64.zip',
-      'NeurodeskApp-macOS-x64.zip',
+      'ScigetApp-Setup-Windows.exe',
+      'ScigetApp-macOS-arm64.zip',
+      'ScigetApp-macOS-x64.zip',
       'latest.yml'
     ]) {
       expect(publishWorkflow).toContain(`asset_name: ${asset}`);
