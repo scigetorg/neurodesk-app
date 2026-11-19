@@ -8,9 +8,15 @@ import {
   readDefaultStorageMount
 } from '../config/storageMount';
 import {
+  buildSharedHostProbeCommand,
   generateLaunchScript,
   getDefaultStorageDirectory,
-  ILaunchScriptParams
+  getUserScopedContainerName,
+  getUserScopedMacAddress,
+  ILaunchScriptParams,
+  LEGACY_MAC_ADDRESS,
+  parseSharedHostProbe,
+  userSuffix
 } from '../server';
 
 const baseConfigPath = path.join(
@@ -50,9 +56,6 @@ function baseParams(overrides: ITestOverrides = {}): ILaunchScriptParams {
     additionalDirectory: '',
     isNfsAdditionalDirectory: false,
     overrideDefaultServerArgs: false,
-    // Pin volumeName so tests are deterministic regardless of the test runner's
-    // UID.  The per-user default is exercised in its own test below.
-    volumeName: 'neurodesk-home',
     ...rest
   };
 }
@@ -157,26 +160,6 @@ describe('generateLaunchScript', () => {
         `--name neurodeskapp-${process.getuid?.() ?? os.userInfo().username}`
       );
       expect(script).not.toContain('--name neurodeskapp-9999');
-    });
-
-    it('scopes the home volume to the current user when volumeName is not provided', () => {
-      const uid = process.getuid?.() ?? os.userInfo().username;
-      const script = generateLaunchScript(
-        baseParams({ volumeName: undefined })
-      );
-      expect(script).toContain(`neurodesk-home-${uid}`);
-      // The unscoped volume must not appear as the container's home mount
-      expect(script).not.toContain('source=neurodesk-home,target=/home/jovyan');
-      expect(script).not.toContain('-v neurodesk-home:/home/jovyan');
-    });
-
-    it('uses an explicit volumeName when provided', () => {
-      const script = generateLaunchScript(
-        baseParams({ volumeName: 'neurodesk-home-1234' })
-      );
-      expect(script).toContain(
-        'source=neurodesk-home-1234,target=/home/jovyan'
-      );
     });
 
     it('includes port mapping', () => {
@@ -922,51 +905,176 @@ describe('generateLaunchScript', () => {
       expect(script).not.toContain('--entrypoint chown');
     });
   });
+});
 
-  // ── Legacy volume migration ──
-  //
-  // When volumeName differs from parser.getVolumeMount() (i.e. it has been
-  // scoped to the user), the launch script must include a one-time migration
-  // that copies data from the old unscoped volume to the new per-user one.
+describe('shared-host MAC address', () => {
+  const sharedParams = (engineType: EngineType, sharedHost?: boolean) => ({
+    parser: new ContainerConfigParser(
+      baseConfigPath,
+      containerConfigPath,
+      '2024-01-01'
+    ),
+    engineType,
+    port: 8888,
+    token: 'jlab:srvr:abc123',
+    platform: 'linux',
+    cvmfsMode: 'false',
+    osVersion: '2204',
+    tinyrangePath: '/usr/local/bin/tinyrange',
+    storageDirectory: '~/neurodesktop-storage',
+    sharedHost
+  });
 
-  describe('legacy volume migration', () => {
-    it('emits a migration block when volumeName differs from the raw volume mount', () => {
-      const script = generateLaunchScript(
-        baseParams({ volumeName: 'neurodesk-home-1000' })
-      );
-      expect(script).toContain('neurodesk-home-1000');
-      // Should check the old volume exists and the new one does not before copying
-      expect(script).toContain('docker volume inspect neurodesk-home');
-      expect(script).toContain('docker volume inspect neurodesk-home-1000');
-      expect(script).toContain(
-        '-v neurodesk-home:/from -v neurodesk-home-1000:/to alpine'
-      );
+  it('keeps the legacy MAC and Podman IP on a single-user host (default)', () => {
+    const docker = generateLaunchScript(sharedParams(EngineType.Docker));
+    expect(docker).toContain(`--mac-address=${LEGACY_MAC_ADDRESS}`);
+    const podman = generateLaunchScript(sharedParams(EngineType.Podman));
+    expect(podman).toContain(
+      `--network bridge:ip=10.88.0.10,mac=${LEGACY_MAC_ADDRESS}`
+    );
+  });
+
+  it('uses a per-user MAC and no static Podman IP on a shared host', () => {
+    const mac = getUserScopedMacAddress();
+    expect(mac).not.toBe(LEGACY_MAC_ADDRESS);
+    const docker = generateLaunchScript(sharedParams(EngineType.Docker, true));
+    expect(docker).toContain(`--mac-address=${mac}`);
+    expect(docker).not.toContain(LEGACY_MAC_ADDRESS);
+    const podman = generateLaunchScript(sharedParams(EngineType.Podman, true));
+    expect(podman).toContain(`--network bridge:mac=${mac}`);
+    expect(podman).not.toContain('ip=10.88.0.10');
+  });
+
+  it('an explicit macAddress overrides both modes', () => {
+    const script = generateLaunchScript({
+      ...sharedParams(EngineType.Docker, true),
+      macAddress: '02:00:00:00:00:01'
     });
+    expect(script).toContain('--mac-address=02:00:00:00:00:01');
+  });
+});
 
-    it('does not emit a migration block when volumeName matches the raw volume mount', () => {
-      // baseParams() pins volumeName: 'neurodesk-home' which equals parser.getVolumeMount()
-      const script = generateLaunchScript(baseParams());
-      expect(script).not.toContain('/from');
-      expect(script).not.toContain('/to');
-    });
+describe('getUserScopedMacAddress', () => {
+  it('maps numeric UIDs onto the last three bytes', () => {
+    expect(getUserScopedMacAddress(1000)).toBe('88:75:56:00:03:e8');
+    expect(getUserScopedMacAddress('1001')).toBe('88:75:56:00:03:e9');
+    // Directory (AD/LDAP) UIDs keep their low 24 bits.
+    expect(getUserScopedMacAddress(1855801234)).toBe('88:75:56:9d:47:92');
+  });
 
-    it('migration runs before the container launch', () => {
-      const script = generateLaunchScript(
-        baseParams({ volumeName: 'neurodesk-home-1000' })
-      );
-      expect(script.indexOf('neurodesk-home:/from')).toBeLessThan(
-        script.indexOf('CONTAINER_ID=')
-      );
-    });
+  it('never reproduces the legacy MAC', () => {
+    // 15679190 === 0xef3ed6, the legacy suffix.
+    expect(getUserScopedMacAddress(15679190)).toBe('88:75:56:ef:3e:d7');
+    expect(getUserScopedMacAddress(15679190)).not.toBe(LEGACY_MAC_ADDRESS);
+  });
 
-    it('is skipped for TinyRange', () => {
-      const script = generateLaunchScript(
-        baseParams({
-          engineType: EngineType.TinyRange,
-          volumeName: 'neurodesk-home-1000'
-        })
+  it('is stable for the same user and differs between users', () => {
+    expect(getUserScopedMacAddress('alice')).toBe(
+      getUserScopedMacAddress('alice')
+    );
+    expect(getUserScopedMacAddress('alice')).not.toBe(
+      getUserScopedMacAddress('bob')
+    );
+    const uids = Array.from({ length: 200 }, (_, i) => 1000 + i);
+    expect(new Set(uids.map(u => getUserScopedMacAddress(u))).size).toBe(200);
+  });
+
+  it('always returns a well-formed MAC', () => {
+    for (const id of [0, 1000, 4294967295, 'DOMAIN\\User Name', 'é']) {
+      expect(getUserScopedMacAddress(id)).toMatch(
+        /^88:75:56(:[0-9a-f]{2}){3}$/
       );
-      expect(script).not.toContain('/from');
-    });
+    }
+  });
+});
+
+describe('userSuffix', () => {
+  it('gives the container name a Docker-safe suffix', () => {
+    const user = 'DOMAIN\\Jane Doe';
+    expect(userSuffix(user)).toBe('DOMAIN-Jane-Doe');
+    expect(getUserScopedContainerName('neurodeskapp', user)).toBe(
+      'neurodeskapp-DOMAIN-Jane-Doe'
+    );
+  });
+});
+
+describe('parseSharedHostProbe', () => {
+  const own = 'neurodeskapp-1000';
+
+  it("ignores this user's own container with the legacy MAC", () => {
+    expect(parseSharedHostProbe(`/${own} ${LEGACY_MAC_ADDRESS}`, own)).toBe(
+      false
+    );
+  });
+
+  it('is shared when another running container uses the legacy MAC', () => {
+    expect(
+      parseSharedHostProbe(
+        [
+          `/${own} 88:75:56:00:03:e8`,
+          `/neurodeskapp-1002 ${LEGACY_MAC_ADDRESS}`
+        ].join('\n'),
+        own
+      )
+    ).toBe(true);
+  });
+
+  it('checks every network a container is attached to', () => {
+    expect(
+      parseSharedHostProbe(
+        `/other 02:42:ac:11:00:02 ${LEGACY_MAC_ADDRESS}`,
+        own
+      )
+    ).toBe(true);
+  });
+
+  it('ignores containers with other MACs or no network', () => {
+    expect(
+      parseSharedHostProbe('/postgres 02:42:ac:11:00:02\n/no-network', own)
+    ).toBe(false);
+  });
+
+  it('handles CRLF output, blank lines, Podman names and upper case', () => {
+    const output = ['', `other ${LEGACY_MAC_ADDRESS.toUpperCase()}`, ''].join(
+      '\r\n'
+    );
+    expect(parseSharedHostProbe(output, own)).toBe(true);
+  });
+
+  it('is single-user for empty output', () => {
+    expect(parseSharedHostProbe('', own)).toBe(false);
+  });
+});
+
+describe('buildSharedHostProbeCommand', () => {
+  it('lists running container MACs on Unix', () => {
+    const cmd = buildSharedHostProbeCommand(EngineType.Docker, 'linux');
+    expect(cmd).toContain('ids=$(docker ps -q)');
+    expect(cmd).toContain('{{range .NetworkSettings.Networks}}');
+  });
+
+  it('uses the engine binary for Podman', () => {
+    const cmd = buildSharedHostProbeCommand(EngineType.Podman, 'linux');
+    expect(cmd).toContain('podman ps -q');
+    expect(cmd).not.toContain('docker');
+  });
+
+  it('is valid sh syntax on Unix', () => {
+    const { execFileSync } = require('child_process');
+    for (const engine of [EngineType.Docker, EngineType.Podman]) {
+      expect(() =>
+        execFileSync('sh', [
+          '-n',
+          '-c',
+          buildSharedHostProbeCommand(engine, 'linux')
+        ])
+      ).not.toThrow();
+    }
+  });
+
+  it('uses cmd syntax on Windows', () => {
+    const cmd = buildSharedHostProbeCommand(EngineType.Docker, 'win32');
+    expect(cmd).toContain("for /f %i in ('docker ps -q')");
+    expect(cmd).not.toContain('$(');
   });
 });

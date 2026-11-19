@@ -246,6 +246,29 @@ describe('launch script invariants', () => {
 
   // ── Cross-engine env parity ──
 
+  // ── Network identity on shared hosts ──
+  //
+  // Containers that share a MAC (or a fixed IP) on one bridge leave all but
+  // one unreachable, so on a shared host the MAC must be per user.
+  describe('shared host never emits the legacy MAC or a static IP', () => {
+    const cases: Array<[string, EngineType]> = [];
+    for (const platform of PLATFORMS) {
+      cases.push([platform, EngineType.Docker]);
+      cases.push([platform, EngineType.Podman]);
+    }
+
+    it.each(cases)('%s / %s', (platform, engineType) => {
+      const script = generateLaunchScript(
+        baseParams({ platform, engineType, sharedHost: true })
+      );
+      expect(script).toMatch(
+        /(--mac-address=|bridge:mac=)([0-9a-f]{2}:){5}[0-9a-f]{2}/
+      );
+      expect(script).not.toContain('88:75:56:ef:3e:d6');
+      expect(script).not.toMatch(/bridge:ip=/);
+    });
+  });
+
   describe('environment variables', () => {
     // The image needs these regardless of engine. Docker/Podman emit them
     // before the image name, TinyRange after it, but both build from the same

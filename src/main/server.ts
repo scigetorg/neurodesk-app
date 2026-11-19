@@ -19,7 +19,7 @@ import {
   userSettings,
   WorkspaceSettings
 } from './config/settings';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { ProgressView } from './progressview/progressview';
 import {
   ContainerConfigParser,
@@ -109,8 +109,13 @@ export interface ILaunchScriptParams {
   tinyrangePath: string;
   /** Name already scoped to the host user, when resolved by createLaunchScript. */
   containerName?: string;
-  /** Home volume name already scoped to the host user, when resolved by createLaunchScript. */
-  volumeName?: string;
+  /**
+   * Several host users share this container engine. Switches the container
+   * from the legacy fixed MAC (and Podman IP) to a per-user MAC.
+   */
+  sharedHost?: boolean;
+  /** Explicit container MAC address; overrides the sharedHost default. */
+  macAddress?: string;
   /** Host directory mounted at the configured storage mount. */
   storageDirectory?: string;
   /** Host directory mounted at /data, if the user configured one. */
@@ -119,13 +124,138 @@ export interface ILaunchScriptParams {
   overrideDefaultServerArgs?: boolean;
 }
 
+/**
+ * The host user's identity, shared by everything scoped to one user (container
+ * name and MAC address) so they always agree:
+ * the numeric UID on Unix, the account name on Windows.
+ */
+export function currentUserId(): string | number {
+  return process.getuid?.() ?? os.userInfo().username;
+}
+
+/** User ID made safe for Docker object names. */
+export function userSuffix(userId: string | number): string {
+  return String(userId).replace(/[^a-zA-Z0-9_.-]/g, '-');
+}
+
 /** Keep a stable container name for each host user across app restarts. */
 export function getUserScopedContainerName(
   name: string,
-  userId: string | number = process.getuid?.() ?? os.userInfo().username
+  userId: string | number = currentUserId()
 ): string {
-  const suffix = String(userId).replace(/[^a-zA-Z0-9_.-]/g, '-');
-  return `${name}-${suffix}`;
+  return `${name}-${userSuffix(userId)}`;
+}
+
+/**
+ * MAC address every container used before shared-host support. It is pinned
+ * so MATLAB, which binds its activation to the MAC, does not ask to be
+ * reactivated each time the container is re-created (see the Neurodesk FAQ).
+ * Single-user hosts keep it so existing activations stay valid.
+ */
+export const LEGACY_MAC_ADDRESS = '88:75:56:ef:3e:d6';
+
+/** Static Podman bridge IP used alongside the legacy MAC on single-user hosts. */
+export const LEGACY_PODMAN_IP = '10.88.0.10';
+
+const MAC_PREFIX = '88:75:56';
+const LEGACY_MAC_SUFFIX = 0xef3ed6;
+
+/**
+ * Stable, per-user container MAC address, used only on shared hosts.
+ *
+ * The MAC stays fixed across restarts (MATLAB activation keeps working), but
+ * differs between host users: containers sharing a MAC on the same bridge
+ * confuse the bridge's forwarding table, so a second user's container becomes
+ * unreachable through its published port and the app hangs at startup.
+ *
+ * The last three bytes are the low 24 bits of a numeric UID (no collisions
+ * between UIDs less than 2^24 apart, which covers local and most directory
+ * UIDs), or the first three bytes of a SHA-256 of a Windows account name.
+ * The one value that would reproduce the legacy MAC is bumped by one, so a
+ * shared-host container can never collide with a single-user one.
+ */
+export function getUserScopedMacAddress(
+  userId: string | number = currentUserId()
+): string {
+  const id = String(userId);
+  let suffix = /^\d+$/.test(id)
+    ? Number(id) & 0xffffff
+    : createHash('sha256').update(id).digest().readUIntBE(0, 3);
+  if (suffix === LEGACY_MAC_SUFFIX) {
+    suffix = (suffix + 1) & 0xffffff;
+  }
+  const hex = suffix.toString(16).padStart(6, '0');
+  return `${MAC_PREFIX}:${hex.slice(0, 2)}:${hex.slice(2, 4)}:${hex.slice(4)}`;
+}
+
+/**
+ * One shell command that prints one line per running container:
+ * `<name> <mac> [<mac>...]` (one MAC per attached network).
+ */
+export function buildSharedHostProbeCommand(
+  engineType: EngineType,
+  platform: string = process.platform
+): string {
+  const inspectFormat =
+    '{{.Name}}{{range .NetworkSettings.Networks}} {{.MacAddress}}{{end}}';
+  if (platform === 'win32') {
+    return `for /f %i in ('${engineType} ps -q') do @${engineType} inspect -f "${inspectFormat}" %i`;
+  }
+  return (
+    `ids=$(${engineType} ps -q); ` +
+    `[ -z "$ids" ] || ${engineType} inspect -f '${inspectFormat}' $ids`
+  );
+}
+
+/**
+ * True when a running container other than this user's own already uses the
+ * legacy MAC, i.e. another host user's Neurodesk container (from this or an
+ * older app version) is up on the same engine. Starting a second container
+ * with the same MAC would make one of them unreachable.
+ */
+export function parseSharedHostProbe(
+  output: string,
+  ownContainerName: string
+): boolean {
+  return output
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .some(line => {
+      const [rawName, ...macs] = line.split(/\s+/);
+      const name = rawName.replace(/^\//, '');
+      return (
+        name !== ownContainerName &&
+        macs.some(mac => mac.toLowerCase() === LEGACY_MAC_ADDRESS)
+      );
+    });
+}
+
+/**
+ * Detect whether another host user's container already holds the legacy MAC.
+ * Rootless Docker/Podman give each user their own daemon and network, so
+ * other users' containers are invisible there and cannot collide anyway.
+ * Any failure or timeout falls back to single-user, which keeps the
+ * pre-existing launch flags.
+ */
+export function detectSharedHost(
+  engineType: EngineType,
+  ownContainerName: string,
+  platform: string = process.platform
+): boolean {
+  if (engineType === EngineType.TinyRange) {
+    return false;
+  }
+  try {
+    const output = execSync(buildSharedHostProbeCommand(engineType, platform), {
+      encoding: 'utf-8',
+      timeout: 5000
+    });
+    return parseSharedHostProbe(output, ownContainerName);
+  } catch (error) {
+    log.warn(`Shared-host detection failed, assuming single user: ${error}`);
+    return false;
+  }
 }
 
 /** Resolve the user-scoped name and remove any existing container with it. */
@@ -180,7 +310,8 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
     osVersion,
     tinyrangePath,
     containerName: resolvedContainerName,
-    volumeName: resolvedVolumeName,
+    sharedHost = false,
+    macAddress: requestedMacAddress,
     storageDirectory,
     additionalDirectory = '',
     isNfsAdditionalDirectory = false,
@@ -200,11 +331,7 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
   const containerName =
     resolvedContainerName ||
     getUserScopedContainerName(parser.getContainerName());
-  // Scope the home volume to the host user so concurrent users on the same
-  // host each get their own /home/jovyan and do not fight over Jupyter's
-  // SQLite databases or startup files.
-  const volumeMount =
-    resolvedVolumeName || getUserScopedContainerName(parser.getVolumeMount());
+  const volumeMount = parser.getVolumeMount();
 
   // Keep path separators forward-slashed so the generated script is identical
   // no matter which OS generates it (the Windows tests run on Linux).
@@ -222,6 +349,17 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
   // Jupyter port; TinyRange forwards the host port and serves on it directly.
   const serverPort = isTinyRange ? strPort : parser.getContainerPort();
 
+  // Single-user hosts keep the legacy fixed MAC/IP so existing MATLAB
+  // activations survive the upgrade. Shared hosts need a distinct MAC per user
+  // and must let Podman assign the IP, or the second user's container is
+  // unreachable (Docker) or fails to start (Podman).
+  const macAddress =
+    requestedMacAddress ||
+    (sharedHost ? getUserScopedMacAddress() : LEGACY_MAC_ADDRESS);
+  const podmanNetworkOpts = sharedHost
+    ? `mac=${macAddress}`
+    : `ip=${LEGACY_PODMAN_IP},mac=${macAddress}`;
+
   const context: VariableContext = {
     port: strPort,
     serverPort,
@@ -232,7 +370,9 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
     buildDir,
     storageDir,
     additionalDir,
-    volumeMount
+    volumeMount,
+    macAddress,
+    podmanNetworkOpts
   };
 
   const launchCmd = parser
@@ -249,31 +389,6 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
     ? `${engineType} volume inspect ${volumeMount} >NUL 2>&1 || ${engineType} volume create ${volumeMount}`
     : `${engineType} volume exists ${volumeMount} &> /dev/null || ${engineType} volume create ${volumeMount}`;
   const volumeCreate = isPodman ? volumeCheck : '';
-
-  // One-time migration: if a previous (unscoped) home volume exists and the
-  // new per-user volume does not yet exist, copy the data across so users do
-  // not lose their /home/jovyan content after upgrading.
-  const legacyVolumeName = parser.getVolumeMount(); // e.g. "neurodesk-home"
-  const needsMigration = !isTinyRange && legacyVolumeName !== volumeMount;
-  const migrationCmd = needsMigration
-    ? isWin
-      ? `
-        ${engineType} volume inspect ${legacyVolumeName} >NUL 2>&1
-        if %ERRORLEVEL% equ 0 (
-          ${engineType} volume inspect ${volumeMount} >NUL 2>&1
-          if %ERRORLEVEL% neq 0 (
-            echo [neurodesk-app] Migrating home volume ${legacyVolumeName} to ${volumeMount}
-            ${engineType} volume create ${volumeMount} >NUL
-            ${engineType} run --rm -v ${legacyVolumeName}:/from -v ${volumeMount}:/to alpine sh -c "cp -a /from/. /to/ && echo [neurodesk-app] Migration complete"
-          )
-        )`
-      : `
-        if ${engineType} volume inspect ${legacyVolumeName} &>/dev/null && ! ${engineType} volume inspect ${volumeMount} &>/dev/null; then
-          echo "[neurodesk-app] Migrating home volume ${legacyVolumeName} → ${volumeMount}"
-          ${engineType} volume create ${volumeMount} &>/dev/null
-          ${engineType} run --rm -v ${legacyVolumeName}:/from -v ${volumeMount}:/to alpine sh -c "cp -a /from/. /to/ && echo '[neurodesk-app] Migration complete'"
-        fi`
-    : '';
 
   // Fix ownership of /home/jovyan on the persistent volume before launching.
   // The volume may have .cache or other dirs owned by root from a previous run
@@ -357,7 +472,6 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
               echo "${engineType} command not found, running ${launchCmd}"
               ${launchCmd}
           )
-        ${migrationCmd}
         FOR /F "usebackq delims=" %%i IN (\`${engineType} image inspect ${imageName} --format="exists" 2^>nul\`) DO SET IMAGE_EXISTS=%%i
         ${fixPermissionsCmd}
         if "%IMAGE_EXISTS%"=="exists" (
@@ -393,7 +507,6 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
         echo "[neurodesk-app] NFS additional directory: ${isNfsAdditionalDirectory}"
         echo "[neurodesk-app] Container name: ${containerName}"
         echo "[neurodesk-app] Port: ${strPort}"
-        ${migrationCmd}
         ${
           additionalDir
             ? `echo "[neurodesk-app] Additional dir mount info: $(mount | grep '${additionalDir
@@ -573,7 +686,16 @@ function createLaunchScript(
     engineType,
     parser.getContainerName()
   );
-  const volumeName = getUserScopedContainerName(parser.getVolumeMount() ?? '');
+  // Runs after resolveContainerName removed this user's own previous
+  // container, which may still carry the legacy MAC.
+  const sharedHost = detectSharedHost(engineType, containerName);
+  log.info(
+    `Shared-host detection: ${
+      sharedHost
+        ? "another user's container holds the legacy MAC, using per-user MAC address"
+        : 'no other user running, using legacy MAC address'
+    }`
+  );
 
   log.info(
     `Server launch: port=${port} engine=${engineType} container=${containerName} image=${parser.getImageName()}`
@@ -592,7 +714,7 @@ function createLaunchScript(
     osVersion: getHostOsVersion(),
     tinyrangePath: resolveTinyrangePath(isWin),
     containerName,
-    volumeName,
+    sharedHost,
     storageDirectory,
     additionalDirectory,
     isNfsAdditionalDirectory,

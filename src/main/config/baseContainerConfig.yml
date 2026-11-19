@@ -56,7 +56,7 @@ launchArgs:
         - '-p 127.0.0.1:{port}:{containerPort}'
         - '-e NB_UID=1000 -e NB_GID=1000 -v {storageDir}:/{storageMount}'
         - '-v {volume_mount}:/home/jovyan'
-        - '--network bridge:ip=10.88.0.10,mac=88:75:56:ef:3e:d6'
+        - '--network bridge:{podmanNetworkOpts}'
         - '--add-host=host.docker.internal:!HOST_GATEWAY_IP! -e OLLAMA_HOST="http://host.docker.internal:11434"'
     unix:
       <<: *podman_base
@@ -66,7 +66,7 @@ launchArgs:
         - '-p 127.0.0.1:{port}:{containerPort}'
         - '-e NB_UID="$(id -u)" -e NB_GID="$(id -g)" -v {storageDir}:/{storageMount}'
         - '-v {volume_mount}:/home/jovyan'
-        - '--network bridge:ip=10.88.0.10,mac=88:75:56:ef:3e:d6'
+        - '--network bridge:{podmanNetworkOpts}'
         - '--add-host=host.docker.internal:${HOST_GATEWAY_IP} -e OLLAMA_HOST="http://host.docker.internal:11434"'
 
   docker:
@@ -77,7 +77,7 @@ launchArgs:
         - '{commonLaunchArgs}'
         - '-p 127.0.0.1:{port}:{containerPort}'
         - '-e NB_UID=1000 -e NB_GID=1000 -v {storageDir}:/{storageMount}'
-        - '--mount source={volume_mount},target=/home/jovyan --mac-address=88:75:56:ef:3e:d6'
+        - '--mount source={volume_mount},target=/home/jovyan --mac-address={macAddress}'
         - '--add-host=host.docker.internal:!HOST_GATEWAY_IP! -e OLLAMA_HOST="http://host.docker.internal:11434"'
     unix:
       <<: *docker_base
@@ -86,7 +86,7 @@ launchArgs:
         - '{commonLaunchArgs}'
         - '-p 127.0.0.1:{port}:{containerPort}'
         - '-e NB_UID="$(id -u)" -e NB_GID="$(id -g)" -v {storageDir}:/{storageMount}'
-        - '--mount source={volume_mount},target=/home/jovyan --mac-address=88:75:56:ef:3e:d6'
+        - '--mount source={volume_mount},target=/home/jovyan --mac-address={macAddress}'
         - '--add-host=host.docker.internal:${HOST_GATEWAY_IP} -e OLLAMA_HOST="http://host.docker.internal:11434"'
 
   tinyrange:

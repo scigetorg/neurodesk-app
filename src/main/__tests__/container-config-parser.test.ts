@@ -27,6 +27,8 @@ function makeContext(
     storageDir: '~/neurodesktop-storage',
     additionalDir: '',
     volumeMount: 'neurodesk-home',
+    macAddress: '88:75:56:ef:3e:d6',
+    podmanNetworkOpts: 'ip=10.88.0.10,mac=88:75:56:ef:3e:d6',
     ...overrides
   };
 }

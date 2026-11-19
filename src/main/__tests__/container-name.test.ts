@@ -5,7 +5,12 @@ jest.mock('child_process', () => ({
 
 import { execSync } from 'child_process';
 import { EngineType } from '../config/settings';
-import { getUserScopedContainerName, resolveContainerName } from '../server';
+import {
+  detectSharedHost,
+  getUserScopedContainerName,
+  LEGACY_MAC_ADDRESS,
+  resolveContainerName
+} from '../server';
 
 const execSyncMock = execSync as jest.Mock;
 
@@ -106,5 +111,36 @@ describe('resolveContainerName', () => {
     expect(getUserScopedContainerName('neurodeskapp', 'Jane Doe')).toBe(
       'neurodeskapp-Jane-Doe'
     );
+  });
+});
+
+describe('detectSharedHost', () => {
+  beforeEach(() => {
+    execSyncMock.mockReset();
+  });
+
+  it('never probes for TinyRange', () => {
+    expect(detectSharedHost(EngineType.TinyRange, 'neurodeskapp-1000')).toBe(
+      false
+    );
+    expect(execSyncMock).not.toHaveBeenCalled();
+  });
+
+  it('falls back to single-user when the probe fails or times out', () => {
+    execSyncMock.mockImplementation(() => {
+      throw new Error('ETIMEDOUT');
+    });
+    expect(
+      detectSharedHost(EngineType.Docker, 'neurodeskapp-1000', 'linux')
+    ).toBe(false);
+  });
+
+  it('runs one probe with a 5s timeout and reports another user', () => {
+    execSyncMock.mockReturnValue(`/neurodeskapp-2000 ${LEGACY_MAC_ADDRESS}\n`);
+    expect(
+      detectSharedHost(EngineType.Docker, 'neurodeskapp-1000', 'linux')
+    ).toBe(true);
+    expect(execSyncMock).toHaveBeenCalledTimes(1);
+    expect(execSyncMock.mock.calls[0][1]).toMatchObject({ timeout: 5000 });
   });
 });

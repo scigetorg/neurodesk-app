@@ -18,6 +18,10 @@ export interface VariableContext {
   storageDir?: string;
   additionalDir?: string;
   volumeMount?: string;
+  /** Container MAC address; must differ between users on a shared host. */
+  macAddress?: string;
+  /** Podman `--network bridge:` options (MAC, and static IP on single-user hosts). */
+  podmanNetworkOpts?: string;
 }
 
 /**
@@ -192,6 +196,8 @@ export class ContainerConfigParser {
       '{additionalDir}': context.additionalDir || '',
       '{imageRegistry}': this.getImageName(),
       '{volume_mount}': context.volumeMount || '',
+      '{macAddress}': context.macAddress || '',
+      '{podmanNetworkOpts}': context.podmanNetworkOpts || '',
       '{containerName}':
         context.containerName || this.containerConfig.containerName || ''
     };
