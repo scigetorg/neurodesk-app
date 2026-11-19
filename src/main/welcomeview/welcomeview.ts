@@ -671,6 +671,8 @@ export class WelcomeView {
           // descriptions and URLs come from the remotely hosted catalog.
           function createAppCard(app) {
               const card = el('div', 'app-card');
+              // Catalog ID as element id: the E2E selector finds cards by it.
+              card.id = app.id;
               card.append(
                   el('h3', 'app-title', app.title),
                   el('p', 'app-description', app.description)
