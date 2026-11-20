@@ -176,11 +176,11 @@ export class WelcomeView {
           }
 
           .announcement-card {
-            border-top: 4px solid #6aa329;
+            border-top: 4px solid #d97706;
           }
 
           .app-ui-dark .announcement-card {
-            border-top-color: #b7d886;
+            border-top-color: #ffd0a3;
           }
 
           .announcement-header {
@@ -243,12 +243,12 @@ export class WelcomeView {
             }
 
             .local-btn {
-                background: #6aa329;
+                background: #d97706;
                 color: white;
             }
 
             .local-btn:hover:not(:disabled) {
-                background: #b7d886;
+                background: #ffd0a3;
             }
 
             .launch-btn.loading {
@@ -290,12 +290,12 @@ export class WelcomeView {
                 cursor: pointer;
                 transition: all 0.2s ease;
                 font-size: 0.9rem;
-                background: #b7d886;
+                background: #ffd0a3;
                 color: black;
             }
 
             .split-btn-main:hover {
-                background: #6aa329;
+                background: #d97706;
                 color: white;
             }
 
@@ -307,12 +307,12 @@ export class WelcomeView {
                 font-size: 0.7rem;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                background: #b7d886;
+                background: #ffd0a3;
                 color: black;
             }
 
             .split-btn-arrow:hover {
-                background: #6aa329;
+                background: #d97706;
                 color: white;
             }
 
@@ -563,7 +563,7 @@ export class WelcomeView {
             #survey-reminder-btn {
               display: inline-block;
               padding: 8px 16px;
-              background: #b7d886;
+              background: #ffd0a3;
               color: black;
               font-weight: 600;
               font-size: 0.85rem;
@@ -573,7 +573,7 @@ export class WelcomeView {
               transition: background 0.2s ease;
             }
             #survey-reminder-btn:hover {
-              background: #6aa329;
+              background: #d97706;
             }
           </style>
           <script>
@@ -689,11 +689,6 @@ export class WelcomeView {
           }
 
           function createLocalButton(app) {
-              if (!app.releaseHistoryUrl) {
-                  const button = el('button', 'launch-btn local-btn', 'Launch Local');
-                  button.addEventListener('click', () => handleNewSessionClick(app, null));
-                  return button;
-              }
               const wrapper = el('div', 'split-btn-wrapper');
               const main = el('button', 'split-btn-main', 'Launch Local');
               const arrow = el('button', 'split-btn-arrow', '\\u25BC');
