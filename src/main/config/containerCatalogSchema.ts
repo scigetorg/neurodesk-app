@@ -13,8 +13,8 @@ import { ContainerConfig } from './containerConfigParser';
 //   title, description, tags,        ──► welcome view innerHTML and inline
 //   remoteUrl, releaseHistoryUrl         onclick='…' handlers
 //
-// Entries come from the `container` block of each domain in apps.json's
-// domains.json. The same rules exist as JSON Schema in domains.schema.json,
+// Entries come from each domain in apps.json's domains.json. The same rules
+// exist as JSON Schema in domains.schema.json,
 // which the catalog repository's CI runs. container-catalog-schema.test.ts checks that
 // the two agree; change both together.
 
@@ -216,12 +216,12 @@ export type CatalogDocumentResult =
   | { ok: false; error: string };
 
 /**
- * Check the domains.json envelope and pull out each domain's container block.
+ * Check the domains.json envelope and pull out each domain's launch fields.
  *
  *   { schemaVersion: 1,
- *     domains: { neuroimaging: { source_repositories: [...], container: {...} },
+ *     domains: { neuroimaging: { source_repositories: [...], registry: ... },
  *                microscopy:   { source_repositories: [...] } } }
- *       ──► { neuroimaging: {...} }      (a domain with no container is skipped)
+ *       ──► { neuroimaging: {...} }      (a domain without launch fields is skipped)
  *
  * Entries are validated one at a time by the caller so that one bad entry
  * does not discard the rest. Other domain fields belong to the catalog
@@ -248,8 +248,8 @@ export function parseCatalogDocument(raw: unknown): CatalogDocumentResult {
       // Not skipped silently: validation rejects it and the caller falls
       // back to the last good entry for this ID.
       entries[id] = domain;
-    } else if (domain.container !== undefined) {
-      entries[id] = domain.container;
+    } else if (Object.keys(domain).some(key => key !== 'source_repositories')) {
+      entries[id] = domain;
     }
   }
   return { ok: true, entries };

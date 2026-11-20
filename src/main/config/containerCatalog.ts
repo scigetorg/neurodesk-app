@@ -12,8 +12,8 @@ import {
 } from './containerCatalogSchema';
 
 // Container catalog: which containers the app can launch, and how. Each
-// apps.json domain has one image; its settings are the `container` block of
-// that domain in domains.json, keyed by domain ID.
+// apps.json domain has one image; its settings are fields of that domain in
+// domains.json, keyed by domain ID.
 //
 // Sources, best first. Every entry from every source passes
 // validateCatalogEntry and the minAppVersion check before it is used.
@@ -59,7 +59,7 @@ export interface IContainerCatalogOptions {
 interface ICacheFile {
   fetchedAt: number;
   schemaVersion: number;
-  domains: Record<string, { container: IContainerCatalogEntry }>;
+  domains: Record<string, IContainerCatalogEntry>;
 }
 
 export const DEFAULT_CATALOG_TTL_MS = 60 * 60 * 1000;
@@ -289,7 +289,7 @@ export class ContainerCatalog {
       fetchedAt: this._fetchedAt,
       schemaVersion: CATALOG_SCHEMA_VERSION,
       domains: Object.fromEntries(
-        [...this._entries].map(([id, entry]) => [id, { container: entry }])
+        [...this._entries].map(([id, entry]) => [id, entry])
       )
     };
     try {

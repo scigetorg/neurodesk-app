@@ -105,13 +105,16 @@ const REQUIRED = [
   'defaultStorageMount'
 ];
 
-// A domains.json document giving each domain the container block shown.
+// A domains.json document giving each domain the launch fields shown.
 const document = (containers: Record<string, unknown>) => ({
   schemaVersion: CATALOG_SCHEMA_VERSION,
   domains: Object.fromEntries(
     Object.entries(containers).map(([id, container]) => [
       id,
-      { source_repositories: ['NeuroDesk/neurocontainers'], container }
+      {
+        source_repositories: ['NeuroDesk/neurocontainers'],
+        ...(container as object)
+      }
     ])
   )
 });
@@ -275,7 +278,26 @@ describe('parseCatalogDocument', () => {
     const result = parseCatalogDocument(
       document({ neuroimaging: validEntry() })
     );
-    expect(result.ok).toBe(true);
+    expect(result).toEqual({
+      ok: true,
+      entries: {
+        neuroimaging: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          ...validEntry()
+        }
+      }
+    });
+  });
+
+  it('skips domains with only source repositories', () => {
+    expect(
+      parseCatalogDocument({
+        schemaVersion: 1,
+        domains: {
+          microscopy: { source_repositories: ['Example/microcontainers'] }
+        }
+      })
+    ).toEqual({ ok: true, entries: {} });
   });
 
   it.each([
@@ -341,7 +363,7 @@ describe('domains.schema.json agrees with validateCatalogEntry', () => {
     expect(
       ajvValidate({
         schemaVersion: 1,
-        domains: { neuroimaging: { container: validEntry() } }
+        domains: { neuroimaging: validEntry() }
       })
     ).toBe(false);
   });
@@ -351,7 +373,7 @@ describe('domains.schema.json agrees with validateCatalogEntry', () => {
       path.join(__dirname, '../config/containerCatalogSchema.ts'),
       'utf8'
     );
-    const props = schema.definitions.container.properties;
+    const props = schema.definitions.domain.properties;
     const expectPattern = (constName: string, jsonPattern: string) => {
       const match = new RegExp(`export const ${constName} = /(.*)/;`).exec(
         tsSource

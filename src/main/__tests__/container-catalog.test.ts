@@ -25,14 +25,17 @@ const entry = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 });
 
-// A domains.json body giving each domain the container block shown.
+// A domains.json body giving each domain the launch fields shown.
 const doc = (containers: Record<string, unknown>) =>
   JSON.stringify({
     schemaVersion: 1,
     domains: Object.fromEntries(
       Object.entries(containers).map(([id, container]) => [
         id,
-        { source_repositories: ['NeuroDesk/neurocontainers'], container }
+        {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          ...(container as object)
+        }
       ])
     )
   });
@@ -68,7 +71,7 @@ function writeCache(containers: Record<string, unknown>, fetchedAt: number) {
       fetchedAt,
       schemaVersion: 1,
       domains: Object.fromEntries(
-        Object.entries(containers).map(([id, container]) => [id, { container }])
+        Object.entries(containers).map(([id, container]) => [id, container])
       )
     })
   );
@@ -169,7 +172,7 @@ describe('startup snapshot (no network)', () => {
       JSON.stringify({
         fetchedAt: 1,
         schemaVersion: 1,
-        domains: { x: { container: { title: '<b>' } } }
+        domains: { x: { title: '<b>' } }
       })
     ]
   ])('falls back to bundled when the cache is %s', (_label, text) => {
@@ -274,13 +277,13 @@ describe('refresh', () => {
         'the schemaVersion is newer',
         JSON.stringify({
           schemaVersion: 2,
-          domains: { neurodesk: { container: entry() } }
+          domains: { neurodesk: entry() }
         })
       ],
       ['domains is missing', JSON.stringify({ schemaVersion: 1 })],
       ['domains is empty', doc({})],
       [
-        'no domain has a container',
+        'no domain has launch fields',
         JSON.stringify({
           schemaVersion: 1,
           domains: { neuroimaging: { source_repositories: ['A/b'] } }
@@ -398,7 +401,7 @@ describe('refresh', () => {
         domains: {
           neurodesk: {
             source_repositories: ['NeuroDesk/neurocontainers'],
-            container: entry()
+            ...entry()
           },
           microscopy: { source_repositories: ['Example/microcontainers'] }
         }
@@ -415,7 +418,7 @@ describe('refresh', () => {
         domains: {
           neurodesk: 'oops',
           lite: {
-            container: entry({ title: 'lite', containerName: 'liteapp' })
+            ...entry({ title: 'lite', containerName: 'liteapp' })
           }
         }
       });
@@ -452,9 +455,7 @@ describe('refresh', () => {
     remote = doc({ neurodesk: { ...entry(), futureField: 'x' } });
     await makeCatalog().refresh();
     const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-    expect(cached.domains.neurodesk.container).not.toHaveProperty(
-      'futureField'
-    );
+    expect(cached.domains.neurodesk).not.toHaveProperty('futureField');
   });
 
   it('still updates the snapshot when the cache cannot be written', async () => {
