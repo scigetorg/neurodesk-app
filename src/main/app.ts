@@ -280,7 +280,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     createNeurodesktopStorage();
     // Fetch the hosted container catalog in the background; until it
     // arrives, sessions use the cached or bundled one. Never rejects.
-    void getContainerCatalog().refresh();
+    void getContainerCatalog().refresh({ force: true });
 
     // create a server in advance
     // this._serverFactory.createFreeServer().catch(error => {
