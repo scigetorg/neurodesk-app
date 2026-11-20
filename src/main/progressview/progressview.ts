@@ -64,6 +64,23 @@ export class ProgressView {
         #progress-detail {
           font-size: 14px;
         }
+        #progress-bar-container {
+          width: 60%;
+          height: 8px;
+          background: #e0e0e0;
+          border-radius: 4px;
+          margin-top: 12px;
+          margin-bottom: 12px;
+          overflow: hidden;
+          display: none;
+        }
+        #progress-bar {
+          height: 100%;
+          background: #4a90d9;
+          border-radius: 4px;
+          transition: width 0.3s ease;
+          width: 0%;
+        }
         #child-process-log {
           border-top: 1px solid #e7e7e7;
           padding-top: 20px;
@@ -82,6 +99,9 @@ export class ProgressView {
         </div>
         <div class="row progress-message-row">
           <div id="progress-title"></div>
+          <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+          </div>
           <div id="progress-detail"></div>
           <div id="child-process-log"></div>
         </div>
@@ -90,6 +110,8 @@ export class ProgressView {
       <script>
       const progressSvg = document.querySelector('#progress-logo svg');
       const progressTitle = document.getElementById('progress-title');
+      const progressBarContainer = document.getElementById('progress-bar-container');
+      const progressBar = document.getElementById('progress-bar');
       const progressDetail = document.getElementById('progress-detail');
       const childProcessLog = document.getElementById('child-process-log');
 
@@ -108,6 +130,16 @@ export class ProgressView {
       function showProgress(title, detail, showAnimation) {
         progressTitle.innerHTML = title || '';
         progressDetail.innerHTML = detail || '';
+
+        // Show progress bar when title contains a percentage
+        const percentMatch = title && title.match(/(\\d+)%/);
+        if (percentMatch) {
+          progressBarContainer.style.display = 'block';
+          progressBar.style.width = percentMatch[1] + '%';
+        } else {
+          progressBarContainer.style.display = 'none';
+          progressBar.style.width = '0%';
+        }
 
         if (showAnimation) {
           progressSvg.unpauseAnimations();

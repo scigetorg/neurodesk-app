@@ -941,6 +941,7 @@ export class JupyterServer {
           if (this._progressView) {
             this._progressView.setChildProcessLog(data);
           }
+          this._updatePullProgress(data);
           // When container starts, extend deadline for Jupyter startup
           if (data.includes('[neurodesk-app] Container started:')) {
             const newDeadline = Date.now() + JUPYTER_STARTUP_TIMEOUT;
@@ -968,6 +969,7 @@ export class JupyterServer {
             } else {
               log.debug('no progress view');
             }
+            this._updatePullProgress(data);
             if (
               this._info.engine === EngineType.TinyRange &&
               !started &&
@@ -1208,6 +1210,88 @@ export class JupyterServer {
   private _stopping: boolean = false;
   private _restartCount: number = 0;
   private _progressView: ProgressView;
+  private _pullLayers: Map<string, boolean> = new Map();
+  private _isPulling: boolean = false;
+
+  /**
+   * Parse Docker pull output to track layer progress.
+   * Only works with Docker engine (non-TTY output gives per-layer status):
+   *   "a2318d6c47ec: Pulling fs layer"
+   *   "a2318d6c47ec: Pull complete" / "Already exists"
+   *
+   * Podman non-TTY does not emit per-layer completion lines, so pull
+   * progress tracking is skipped for Podman.
+   */
+  private _updatePullProgress(data: string) {
+    if (!this._progressView || this._info.engine !== EngineType.Docker) {
+      return;
+    }
+
+    // Detect pull start
+    if (data.includes('Pulling from') || data.includes('Image does not exist')) {
+      this._isPulling = true;
+      this._pullLayers.clear();
+    }
+
+    if (!this._isPulling) {
+      return;
+    }
+
+    // Docker non-TTY format: "<12-char-hash>: <status>"
+    const dockerLayers = data.matchAll(/([a-f0-9]{12}):\s+([\w ]+)/g);
+    for (const match of dockerLayers) {
+      const layerId = match[1];
+      const status = match[2].trim();
+      if (
+        status === 'Pull complete' ||
+        status === 'Already exists' ||
+        status === 'Download complete'
+      ) {
+        this._pullLayers.set(layerId, true);
+      } else if (
+        status === 'Pulling fs layer' ||
+        status === 'Waiting' ||
+        status === 'Downloading' ||
+        status === 'Extracting' ||
+        status === 'Verifying Checksum'
+      ) {
+        if (!this._pullLayers.has(layerId)) {
+          this._pullLayers.set(layerId, false);
+        }
+      }
+    }
+
+    // Digest line means pull is complete
+    if (data.includes('Digest:') || data.includes('Status:')) {
+      this._isPulling = false;
+      this._pullLayers.forEach((_, key) =>
+        this._pullLayers.set(key, true)
+      );
+    }
+
+    if (this._pullLayers.size > 0) {
+      const total = this._pullLayers.size;
+      let completed = 0;
+      this._pullLayers.forEach(done => {
+        if (done) completed++;
+      });
+      const percent = Math.round((completed / total) * 100);
+
+      if (completed === total && !this._isPulling) {
+        this._progressView.setProgress(
+          'Starting container',
+          '<div class="message-row">Image download complete. Starting up...</div>',
+          true
+        );
+      } else {
+        this._progressView.setProgress(
+          `Downloading image — ${percent}%`,
+          `<div class="message-row">Pulled ${completed} of ${total} layers</div>`,
+          true
+        );
+      }
+    }
+  }
 }
 
 export namespace JupyterServer {

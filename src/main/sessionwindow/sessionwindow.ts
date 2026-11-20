@@ -477,7 +477,7 @@ export class SessionWindow implements IDisposable {
 
         this._showProgressView(
           'Creating new session',
-          `<div class="message-row">This could take up to 40 minutes on the first start.</div>
+          `<div class="message-row">Checking for container image...</div>
           `
         );
 
