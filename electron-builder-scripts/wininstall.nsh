@@ -343,7 +343,7 @@ FunctionEnd
 	; files are not duplicated across two directories.
 	IfFileExists "C:\ScigetApp\ScigetApp.exe" 0 +3
 		RMDir /r "C:\ScigetApp"
-		${un.EnvVarUpdate} $0 "PATH" "R" "HKCU" "C:\ScigetApp"
+		${EnvVarUpdate} $0 "PATH" "R" "HKCU" "C:\ScigetApp"
 !macroend
 
 !macro customUnInstall
