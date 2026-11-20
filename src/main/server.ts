@@ -1228,7 +1228,10 @@ export class JupyterServer {
     }
 
     // Detect pull start
-    if (data.includes('Pulling from') || data.includes('Image does not exist')) {
+    if (
+      data.includes('Pulling from') ||
+      data.includes('Image does not exist')
+    ) {
       this._isPulling = true;
       this._pullLayers.clear();
     }
@@ -1264,9 +1267,7 @@ export class JupyterServer {
     // Digest line means pull is complete
     if (data.includes('Digest:') || data.includes('Status:')) {
       this._isPulling = false;
-      this._pullLayers.forEach((_, key) =>
-        this._pullLayers.set(key, true)
-      );
+      this._pullLayers.forEach((_, key) => this._pullLayers.set(key, true));
     }
 
     if (this._pullLayers.size > 0) {
