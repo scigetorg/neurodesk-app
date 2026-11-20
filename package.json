@@ -91,7 +91,7 @@
       ]
     },
     "deb": {
-      "appArmorProfile": "electron-builder-scripts/neurodeskapp.apparmor",
+      "appArmorProfile": "electron-builder-scripts/scigetapp.apparmor",
       "fpm": [
         "--after-install=build/linux_after_install.sh"
       ]
@@ -113,7 +113,7 @@
       "icon": "dist-resources/icon.ico"
     },
     "rpm": {
-      "appArmorProfile": "electron-builder-scripts/neurodeskapp.apparmor",
+      "appArmorProfile": "electron-builder-scripts/scigetapp.apparmor",
       "depends": [
         "libXScrnSaver"
       ],
