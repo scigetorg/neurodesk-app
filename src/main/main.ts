@@ -37,7 +37,8 @@ function migrateStaleConfigDir(): void {
       path.join(homeDir, 'Library', 'Application Support', n)
     );
   } else if (process.platform === 'win32') {
-    const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+    const appData =
+      process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
     candidates = staleNames.map(n => path.join(appData, n));
   }
 
