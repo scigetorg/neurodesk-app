@@ -115,65 +115,65 @@ jobs:
         if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@v6
         with:
-          name: ScigetApp-debian-installer-x64
+          name: NeurodeskApp-debian-installer-x64
           path: |
-            dist/ScigetApp.deb
+            dist/NeurodeskApp.deb
 
       - name: Upload Fedora x64 Installer
         if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@v6
         with:
-          name: ScigetApp-fedora-installer-x64
+          name: NeurodeskApp-fedora-installer-x64
           path: |
-            dist/ScigetApp.rpm
+            dist/NeurodeskApp.rpm
 
       - name: Upload Debian arm64 Installer
         if: matrix.cfg.platform == 'linux-arm64'
         uses: actions/upload-artifact@v6
         with:
-          name: ScigetApp-debian-installer-arm64
+          name: NeurodeskApp-debian-installer-arm64
           path: |
-            dist/ScigetApp.deb
+            dist/NeurodeskApp.deb
 
       - name: Upload Fedora arm64 Installer
         if: matrix.cfg.platform == 'linux-arm64'
         uses: actions/upload-artifact@v6
         with:
-          name: ScigetApp-fedora-installer-arm64
+          name: NeurodeskApp-fedora-installer-arm64
           path: |
-            dist/ScigetApp.rpm
+            dist/NeurodeskApp.rpm
 
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'mac'
         uses: actions/upload-artifact@v6
         with:
-          name: ScigetApp-mac-installer-x64
+          name: NeurodeskApp-mac-installer-x64
           path: |
-            dist/ScigetApp-x64.dmg
+            dist/NeurodeskApp-x64.dmg
 
       - name: Upload macOS arm64 Installer
         if: matrix.cfg.platform == 'mac'
         uses: actions/upload-artifact@v6
         with:
-          name: ScigetApp-mac-installer-arm64
+          name: NeurodeskApp-mac-installer-arm64
           path: |
-            dist/ScigetApp-arm64.dmg
+            dist/NeurodeskApp-arm64.dmg
 
       - name: Upload Windows Installer
         if: matrix.cfg.platform == 'win'
         uses: actions/upload-artifact@v6
         with:
-          name: ScigetApp-windows-installer
+          name: NeurodeskApp-windows-installer
           path: |
-            dist/ScigetApp-Setup.exe
+            dist/NeurodeskApp-Setup.exe
 
       - name: Upload Debian Installer x64 as Release asset
         if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp.deb
-          asset_name: ScigetApp-Setup-Debian-x64.deb
+          file: dist/NeurodeskApp.deb
+          asset_name: NeurodeskApp-Setup-Debian-x64.deb
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -182,8 +182,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp.rpm
-          asset_name: ScigetApp-Setup-Fedora-x64.rpm
+          file: dist/NeurodeskApp.rpm
+          asset_name: NeurodeskApp-Setup-Fedora-x64.rpm
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -192,8 +192,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp.deb
-          asset_name: ScigetApp-Setup-Debian-arm64.deb
+          file: dist/NeurodeskApp.deb
+          asset_name: NeurodeskApp-Setup-Debian-arm64.deb
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -202,8 +202,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp.rpm
-          asset_name: ScigetApp-Setup-Fedora-arm64.rpm
+          file: dist/NeurodeskApp.rpm
+          asset_name: NeurodeskApp-Setup-Fedora-arm64.rpm
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -212,8 +212,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp-x64.dmg
-          asset_name: ScigetApp-Setup-macOS-x64.dmg
+          file: dist/NeurodeskApp-x64.dmg
+          asset_name: NeurodeskApp-Setup-macOS-x64.dmg
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -222,8 +222,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp-arm64.dmg
-          asset_name: ScigetApp-Setup-macOS-arm64.dmg
+          file: dist/NeurodeskApp-arm64.dmg
+          asset_name: NeurodeskApp-Setup-macOS-arm64.dmg
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -232,8 +232,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp-x64.zip
-          asset_name: ScigetApp-macOS-x64.zip
+          file: dist/NeurodeskApp-x64.zip
+          asset_name: NeurodeskApp-macOS-x64.zip
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -242,8 +242,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp-arm64.zip
-          asset_name: ScigetApp-macOS-arm64.zip
+          file: dist/NeurodeskApp-arm64.zip
+          asset_name: NeurodeskApp-macOS-arm64.zip
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -252,8 +252,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/ScigetApp-Setup.exe
-          asset_name: ScigetApp-Setup-Windows.exe
+          file: dist/NeurodeskApp-Setup.exe
+          asset_name: NeurodeskApp-Setup-Windows.exe
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 

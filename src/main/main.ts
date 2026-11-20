@@ -18,7 +18,7 @@ function setDisplayNamePreservingUserData(displayName: string): void {
   app.setPath('userData', userDataPath);
 }
 
-setDisplayNamePreservingUserData('Sciget');
+setDisplayNamePreservingUserData('Sciget App');
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
@@ -43,16 +43,16 @@ require('fix-path')();
 
 function parseArgs(argv: string[]) {
   return yargs(argv)
-    .usage('scigetapp [options] folder/file paths')
-    .example('scigetapp', 'Launch in default working directory')
-    .example('scigetapp .', 'Launch in current directory')
+    .usage('neurodeskapp [options] folder/file paths')
+    .example('neurodeskapp', 'Launch in default working directory')
+    .example('neurodeskapp .', 'Launch in current directory')
     .example(
-      'scigetapp /data/nb/test.ipynb',
+      'neurodeskapp /data/nb/test.ipynb',
       'Launch in /data/nb and open test.ipynb'
     )
-    .example('scigetapp /data/nb', 'Launch in /data/nb')
+    .example('neurodeskapp /data/nb', 'Launch in /data/nb')
     .example(
-      'scigetapp --working-dir /data/nb test.ipynb sub/test2.ipynb',
+      'neurodeskapp --working-dir /data/nb test.ipynb sub/test2.ipynb',
       'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
     )
     .option('working-dir', {
@@ -114,7 +114,7 @@ console.debug = log.debug;
 const thisYear = new Date().getFullYear();
 
 app.setAboutPanelOptions({
-  applicationName: 'Sciget',
+  applicationName: 'Sciget App',
   applicationVersion: release,
   version: release,
   website: 'https://github.com/scigetorg/neurodesk-app',
@@ -153,8 +153,9 @@ function setupJLabCommand() {
     return;
   }
 
-  const symlinkPath = '/usr/local/bin/scigetapp';
-  const targetPath = `${getAppDir()}/app/scigetapp`;
+  const symlinkPath = '/usr/local/bin/neurodeskapp';
+  const aliasPath = '/usr/local/bin/scigetapp';
+  const targetPath = `${getAppDir()}/app/neurodeskapp`;
 
   if (!fs.existsSync(targetPath)) {
     return;
@@ -165,6 +166,11 @@ function setupJLabCommand() {
       const cmd = `ln -s ${targetPath} ${symlinkPath}`;
       execSync(cmd, { shell: '/bin/bash' });
       fs.chmodSync(symlinkPath, 0o755);
+    }
+
+    // Forward-compatible alias so users can start using "scigetapp"
+    if (!fs.existsSync(aliasPath)) {
+      execSync(`ln -s ${symlinkPath} ${aliasPath}`, { shell: '/bin/bash' });
     }
 
     // after a DMG install, mode resets

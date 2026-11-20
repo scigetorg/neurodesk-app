@@ -78,11 +78,11 @@ jobs:
           TAG="v${APP_VERSION}"
           BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
-          curl -fSL -o ScigetApp-arm64.dmg "${BASE_URL}/ScigetApp-Setup-macOS-arm64.dmg"
-          curl -fSL -o ScigetApp-x64.dmg "${BASE_URL}/ScigetApp-Setup-macOS-x64.dmg"
+          curl -fSL -o NeurodeskApp-arm64.dmg "${BASE_URL}/NeurodeskApp-Setup-macOS-arm64.dmg"
+          curl -fSL -o NeurodeskApp-x64.dmg "${BASE_URL}/NeurodeskApp-Setup-macOS-x64.dmg"
 
-          echo "sha256_arm64=$(sha256sum ScigetApp-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "sha256_x64=$(sha256sum ScigetApp-x64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha256_arm64=$(sha256sum NeurodeskApp-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha256_x64=$(sha256sum NeurodeskApp-x64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       # - name: Create new cask PR
       #   if: steps.release-exists.outputs.result == 'true' && steps.cask-exists.outputs.exists == 'false'
@@ -105,14 +105,14 @@ jobs:
       #       version "${APP_VERSION}"
       #       sha256 arm: "${SHA256_ARM64}", intel: "${SHA256_X64}"
 
-      #       url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/ScigetApp-Setup-macOS-#{arch}.dmg"
-      #       name "Sciget"
+      #       url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/NeurodeskApp-Setup-macOS-#{arch}.dmg"
+      #       name "Sciget App"
       #       desc "Desktop application for neuroscience computing"
       #       homepage "https://neurodesk.org/"
 
       #       depends_on macos: ">= :catalina"
 
-      #       app "ScigetApp.app"
+      #       app "NeurodeskApp.app"
 
       #       zap trash: [
       #         "~/Library/Application Support/scigetapp",
@@ -130,7 +130,7 @@ jobs:
       #       --repo Homebrew/homebrew-cask \
       #       --title "Add scigetapp ${APP_VERSION}" \
       #       --body "$(cat <<'PR_EOF'
-      #     **Name:** ScigetApp
+      #     **Name:** Sciget
       #     **Description:** Desktop application for neuroscience computing
       #     **Homepage:** https://neurodesk.org/
       #     **Download:** https://github.com/scigetorg/neurodesk-app/releases
@@ -151,15 +151,15 @@ jobs:
           BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
           # Reuse existing DMGs or download fresh
-          if [ ! -f ScigetApp-arm64.dmg ]; then
-            curl -fSL -o ScigetApp-arm64.dmg "${BASE_URL}/ScigetApp-Setup-macOS-arm64.dmg"
+          if [ ! -f NeurodeskApp-arm64.dmg ]; then
+            curl -fSL -o NeurodeskApp-arm64.dmg "${BASE_URL}/NeurodeskApp-Setup-macOS-arm64.dmg"
           fi
-          if [ ! -f ScigetApp-x64.dmg ]; then
-            curl -fSL -o ScigetApp-x64.dmg "${BASE_URL}/ScigetApp-Setup-macOS-x64.dmg"
+          if [ ! -f NeurodeskApp-x64.dmg ]; then
+            curl -fSL -o NeurodeskApp-x64.dmg "${BASE_URL}/NeurodeskApp-Setup-macOS-x64.dmg"
           fi
 
-          SHA256_ARM64=$(sha256sum ScigetApp-arm64.dmg | awk '{print $1}')
-          SHA256_X64=$(sha256sum ScigetApp-x64.dmg | awk '{print $1}')
+          SHA256_ARM64=$(sha256sum NeurodeskApp-arm64.dmg | awk '{print $1}')
+          SHA256_X64=$(sha256sum NeurodeskApp-x64.dmg | awk '{print $1}')
 
           git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP_REPO}.git" tap
           cd tap
@@ -172,14 +172,14 @@ jobs:
             version "${APP_VERSION}"
             sha256 arm: "${SHA256_ARM64}", intel: "${SHA256_X64}"
 
-            url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/ScigetApp-Setup-macOS-#{arch}.dmg"
-            name "Sciget"
+            url "https://github.com/scigetorg/neurodesk-app/releases/download/v#{version}/NeurodeskApp-Setup-macOS-#{arch}.dmg"
+            name "Sciget App"
             desc "Desktop application for scientific computing"
             homepage "https://sciget.org/"
 
             depends_on macos: ">= :catalina"
 
-            app "ScigetApp.app"
+            app "NeurodeskApp.app"
 
             zap trash: [
               "~/Library/Application Support/scigetapp",

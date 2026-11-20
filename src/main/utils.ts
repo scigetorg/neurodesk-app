@@ -216,12 +216,12 @@ export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {
     case 'darwin':
       return path.join(
         getUserHomeDir(),
-        `/Library/Logs/scigetapp/${processType}.log`
+        `/Library/Logs/neurodeskapp/${processType}.log`
       );
     default:
       return path.join(
         getUserHomeDir(),
-        `/.config/scigetapp/logs/${processType}.log`
+        `/.config/neurodeskapp/logs/${processType}.log`
       );
   }
 }

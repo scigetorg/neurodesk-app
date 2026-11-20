@@ -1,24 +1,35 @@
 #!/bin/bash
 
-ln -s "/opt/ScigetApp/resources/app/scigetapp" /usr/bin/scigetapp
-chmod 755 "/opt/ScigetApp/resources/app/scigetapp"
+# --- Transition cleanup: remove stale scigetapp symlinks from a cancelled rename ---
+if type update-alternatives 2>/dev/null >&1; then
+    update-alternatives --remove 'scigetapp' '/usr/bin/scigetapp' 2>/dev/null || true
+fi
+rm -f '/usr/bin/scigetapp'
+rm -f '/etc/apparmor.d/scigetapp'
+
+# Create the primary CLI symlink (neurodeskapp)
+ln -s "/opt/NeurodeskApp/resources/app/neurodeskapp" /usr/bin/neurodeskapp
+chmod 755 "/opt/NeurodeskApp/resources/app/neurodeskapp"
 
 if type update-alternatives 2>/dev/null >&1; then
     # Remove previous link if it doesn't use update-alternatives
-    if [ -L '/usr/bin/scigetapp' -a -e '/usr/bin/scigetapp' -a "`readlink '/usr/bin/scigetapp'`" != '/etc/alternatives/scigetapp' ]; then
-        rm -f '/usr/bin/scigetapp'
+    if [ -L '/usr/bin/neurodeskapp' -a -e '/usr/bin/neurodeskapp' -a "`readlink '/usr/bin/neurodeskapp'`" != '/etc/alternatives/neurodeskapp' ]; then
+        rm -f '/usr/bin/neurodeskapp'
     fi
-    update-alternatives --install '/usr/bin/scigetapp' 'scigetapp' '/opt/ScigetApp/scigetapp' 100 || ln -sf '/opt/ScigetApp/scigetapp' '/usr/bin/scigetapp'
+    update-alternatives --install '/usr/bin/neurodeskapp' 'neurodeskapp' '/opt/NeurodeskApp/neurodeskapp' 100 || ln -sf '/opt/NeurodeskApp/neurodeskapp' '/usr/bin/neurodeskapp'
 else
-    ln -sf '/opt/ScigetApp/scigetapp' '/usr/bin/scigetapp'
+    ln -sf '/opt/NeurodeskApp/neurodeskapp' '/usr/bin/neurodeskapp'
 fi
+
+# Forward-compatible alias: users can start using "scigetapp" now
+ln -sf '/usr/bin/neurodeskapp' '/usr/bin/scigetapp'
 
 # Check if user namespaces are supported by the kernel and working with a quick test:
 if ! { [[ -L /proc/self/ns/user ]] && unshare --user true; }; then
     # Use SUID chrome-sandbox only on systems without user namespaces:
-    chmod 4755 '/opt/ScigetApp/chrome-sandbox' || true
+    chmod 4755 '/opt/NeurodeskApp/chrome-sandbox' || true
 else
-    chmod 0755 '/opt/ScigetApp/chrome-sandbox' || true
+    chmod 0755 '/opt/NeurodeskApp/chrome-sandbox' || true
 fi
 
 if hash update-mime-database 2>/dev/null; then
@@ -39,8 +50,8 @@ fi
 #
 # Unfortunately, at the moment AppArmor doesn't have a good story for backwards compatibility.
 # https://askubuntu.com/questions/1517272/writing-a-backwards-compatible-apparmor-profile
-APPARMOR_PROFILE_SOURCE='/opt/ScigetApp/resources/apparmor-profile'
-APPARMOR_PROFILE_TARGET='/etc/apparmor.d/scigetapp'
+APPARMOR_PROFILE_SOURCE='/opt/NeurodeskApp/resources/apparmor-profile'
+APPARMOR_PROFILE_TARGET='/etc/apparmor.d/neurodeskapp'
 if test -d "/etc/apparmor.d"; then
   if apparmor_parser --skip-kernel-load --debug "$APPARMOR_PROFILE_SOURCE" > /dev/null 2>&1; then
     cp -f "$APPARMOR_PROFILE_SOURCE" "$APPARMOR_PROFILE_TARGET"
