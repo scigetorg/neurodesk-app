@@ -136,7 +136,6 @@
     "mac": {
       "category": "public.app-category.productivity",
       "extendInfo": {
-        "CFBundleName": "Sciget App",
         "CFBundleDisplayName": "Sciget App"
       },
       "target": [
