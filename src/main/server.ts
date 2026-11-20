@@ -921,7 +921,7 @@ export class JupyterServer {
               this._serverStartFailed();
               reject(
                 new Error(
-                  'Failed to launch Neurodesk from Promise ' +
+                  'Failed to launch container from Promise ' +
                     this._info.port +
                     stderrChunks +
                     stdoutChunks
@@ -984,7 +984,7 @@ export class JupyterServer {
         this._nbServer.on('error', (err: Error) => {
           if (started) {
             dialog.showMessageBox({
-              message: `Neurodesk process errored: ${err.message}`,
+              message: `Container process errored: ${err.message}`,
               type: 'error'
             });
           } else {
@@ -1042,7 +1042,7 @@ export class JupyterServer {
             }
           } else {
             this._serverStartFailed();
-            reject(new Error('Neurodesk process terminated' + stderrChunks));
+            reject(new Error('Container process terminated' + stderrChunks));
           }
         });
       }

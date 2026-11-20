@@ -20,6 +20,69 @@ function setDisplayNamePreservingUserData(displayName: string): void {
 
 setDisplayNamePreservingUserData('Sciget App');
 
+/** Move settings from a stale config directory (e.g. an interim rename) into
+ *  the current userData path so users don't lose their settings. */
+function migrateStaleConfigDir(): void {
+  const currentDir = app.getPath('userData');
+  const staleNames = ['scigetapp', 'Sciget', 'Sciget App', 'ScigetApp'];
+  const homeDir = app.getPath('home');
+  let candidates: string[] = [];
+
+  if (process.platform === 'linux') {
+    const configBase =
+      process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
+    candidates = staleNames.map(n => path.join(configBase, n));
+  } else if (process.platform === 'darwin') {
+    candidates = staleNames.map(n =>
+      path.join(homeDir, 'Library', 'Application Support', n)
+    );
+  } else if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+    candidates = staleNames.map(n => path.join(appData, n));
+  }
+
+  for (const staleDir of candidates) {
+    if (
+      staleDir !== currentDir &&
+      fs.existsSync(staleDir) &&
+      fs.existsSync(path.join(staleDir, 'settings.json'))
+    ) {
+      try {
+        // Only migrate if the current dir has no settings yet
+        if (!fs.existsSync(path.join(currentDir, 'settings.json'))) {
+          if (!fs.existsSync(currentDir)) {
+            fs.mkdirSync(currentDir, { recursive: true });
+          }
+          for (const file of fs.readdirSync(staleDir)) {
+            const src = path.join(staleDir, file);
+            const dest = path.join(currentDir, file);
+            if (!fs.existsSync(dest)) {
+              const stat = fs.statSync(src);
+              if (stat.isDirectory()) {
+                fs.mkdirSync(dest, { recursive: true });
+                for (const child of fs.readdirSync(src)) {
+                  fs.copyFileSync(
+                    path.join(src, child),
+                    path.join(dest, child)
+                  );
+                }
+              } else {
+                fs.copyFileSync(src, dest);
+              }
+            }
+          }
+        }
+        // Remove the stale directory after migration
+        fs.rmSync(staleDir, { recursive: true, force: true });
+      } catch {
+        // Best-effort: don't block startup
+      }
+    }
+  }
+}
+
+migrateStaleConfigDir();
+
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
 

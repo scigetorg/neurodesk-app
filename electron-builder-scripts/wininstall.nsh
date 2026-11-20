@@ -337,6 +337,13 @@ FunctionEnd
 
 !macro customInstall
 	${EnvVarUpdate} $0 "PATH" "A" "HKCU" "$INSTDIR"
+
+	; --- Transition: clean up a previous ScigetApp install if it exists ---
+	; A short-lived release may have installed to C:\ScigetApp. Remove it so
+	; files are not duplicated across two directories.
+	IfFileExists "C:\ScigetApp\ScigetApp.exe" 0 +3
+		RMDir /r "C:\ScigetApp"
+		${un.EnvVarUpdate} $0 "PATH" "R" "HKCU" "C:\ScigetApp"
 !macroend
 
 !macro customUnInstall

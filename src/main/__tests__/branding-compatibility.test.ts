@@ -8,7 +8,7 @@ const pkg = JSON.parse(
 
 describe('Sciget upgrade compatibility', () => {
   it('keeps installer and update identifiers used by existing installations', () => {
-    expect(pkg.name).toBe('scigetapp');
+    expect(pkg.name).toBe('neurodeskapp');
     expect(pkg.build.appId).toBe('org.neurodesk.neurodeskapp');
     expect(pkg.build.productName).toBe('NeurodeskApp');
     expect(pkg.build.artifactName).toBe('${productName}.${ext}');

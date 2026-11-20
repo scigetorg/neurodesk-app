@@ -239,7 +239,7 @@ export class SettingsDialog {
 
             <jp-tab-panel id="tab-panel-server">
               <div class="row" style="line-height: 30px;">
-                <label>Neurodesk storage directory</label>
+                <label>Storage directory</label>
               </div>
               <div class="row">
                 <div style="flex-grow: 1;">
