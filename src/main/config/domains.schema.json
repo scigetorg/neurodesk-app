@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Neurodesk domains",
-  "description": "apps.json domains.json: each domain's source repositories and, optionally, the one container image Neurodesk App launches for it. Source of truth: this file and src/main/config/containerCatalogSchema.ts in neurodesk-desktop; change both together, container-catalog-schema.test.ts checks they agree. apps.json CI fetches this file from master to validate domains.json, so merge schema changes here before using them there.",
+  "description": "apps.json domains.json: source repositories and optional container launch fields share each domain object. Source of truth: this file and src/main/config/containerCatalogSchema.ts; change both together. The apps.json catalog CI fetches this schema for deployment validation.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "domains"],
@@ -35,24 +35,6 @@
             "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
           }
         },
-        "container": {
-          "$ref": "#/definitions/container"
-        }
-      }
-    },
-    "container": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "title",
-        "description",
-        "registry",
-        "defaultVersion",
-        "containerName",
-        "volumeMount",
-        "defaultStorageMount"
-      ],
-      "properties": {
         "title": {
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,63}$"
@@ -117,7 +99,31 @@
           "type": "string",
           "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
         }
-      }
+      },
+      "if": {
+        "minProperties": 2
+      },
+      "then": {
+        "properties": {
+          "title": {},
+          "description": {},
+          "registry": {},
+          "defaultVersion": {},
+          "containerName": {},
+          "volumeMount": {},
+          "defaultStorageMount": {}
+        },
+        "required": [
+          "title",
+          "description",
+          "registry",
+          "defaultVersion",
+          "containerName",
+          "volumeMount",
+          "defaultStorageMount"
+        ]
+      },
+      "description": "A domain may omit launch fields. If it has any, all required launch fields must be present."
     }
   }
 }
