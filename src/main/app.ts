@@ -507,7 +507,21 @@ export class JupyterApplication implements IApplication, IDisposable {
       };
 
       dialog.showMessageBox(dialogOpts).then(returnValue => {
-        if (returnValue.response === 0) autoUpdater.quitAndInstall();
+        if (returnValue.response === 0) {
+          // On macOS, Squirrel replaces the .app bundle with the new
+          // productName (ScigetApp.app), so the old relaunch path
+          // (NeurodeskApp.app) no longer exists.  Tell Electron to
+          // relaunch from the new location before Squirrel quits the app.
+          if (process.platform === 'darwin') {
+            const newExecPath = process.execPath
+              .replace(/NeurodeskApp\.app/g, 'ScigetApp.app')
+              .replace(/\/MacOS\/NeurodeskApp$/, '/MacOS/ScigetApp');
+            if (newExecPath !== process.execPath) {
+              app.relaunch({ execPath: newExecPath });
+            }
+          }
+          autoUpdater.quitAndInstall();
+        }
       });
     });
 
