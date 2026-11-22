@@ -2,15 +2,15 @@
 
 # Delete the link to the binary
 if type update-alternatives >/dev/null 2>&1; then
-    update-alternatives --remove 'neurodeskapp' '/usr/bin/neurodeskapp'
+    update-alternatives --remove 'scigetapp' '/usr/bin/scigetapp'
 else
-    rm -f '/usr/bin/neurodeskapp'
+    rm -f '/usr/bin/scigetapp'
 fi
 
-# Remove forward-compatible alias
-rm -f '/usr/bin/scigetapp'
+# Remove backward-compatible alias
+rm -f '/usr/bin/neurodeskapp'
 
-APPARMOR_PROFILE_DEST='/etc/apparmor.d/neurodeskapp'
+APPARMOR_PROFILE_DEST='/etc/apparmor.d/scigetapp'
 
 # Remove apparmor profile.
 if [ -f "$APPARMOR_PROFILE_DEST" ]; then

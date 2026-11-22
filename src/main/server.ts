@@ -53,7 +53,7 @@ function createTempFile(
   data = '',
   encoding: BufferEncoding = 'utf8'
 ) {
-  const tempDirPath = path.join(os.tmpdir(), 'neurodesk_app');
+  const tempDirPath = path.join(os.tmpdir(), 'sciget_app');
   const tmpDir = fs.mkdtempSync(tempDirPath);
   const tmpFilePath = path.join(tmpDir, fileName);
 

@@ -327,23 +327,23 @@ FunctionEnd
 !endif
 
 
-;--- NeurodeskApp Custom Install Configuration ---
+;--- ScigetApp Custom Install Configuration ---
 
 !macro preInit
 	SetRegView 64
-	WriteRegExpandStr HKLM "${INSTALL_REGISTRY_KEY}" InstallLocation "C:\NeurodeskApp"
-	WriteRegExpandStr HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation "C:\NeurodeskApp"
+	WriteRegExpandStr HKLM "${INSTALL_REGISTRY_KEY}" InstallLocation "C:\ScigetApp"
+	WriteRegExpandStr HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation "C:\ScigetApp"
 !macroend
 
 !macro customInstall
 	${EnvVarUpdate} $0 "PATH" "A" "HKCU" "$INSTDIR"
 
-	; --- Transition: clean up a previous ScigetApp install if it exists ---
-	; A short-lived release may have installed to C:\ScigetApp. Remove it so
+	; --- Transition: clean up a previous NeurodeskApp install if it exists ---
+	; Previous releases installed to C:\NeurodeskApp. Remove it so
 	; files are not duplicated across two directories.
-	IfFileExists "C:\ScigetApp\ScigetApp.exe" 0 +3
-		RMDir /r "C:\ScigetApp"
-		${EnvVarUpdate} $0 "PATH" "R" "HKCU" "C:\ScigetApp"
+	IfFileExists "C:\NeurodeskApp\NeurodeskApp.exe" 0 +3
+		RMDir /r "C:\NeurodeskApp"
+		${EnvVarUpdate} $0 "PATH" "R" "HKCU" "C:\NeurodeskApp"
 !macroend
 
 !macro customUnInstall

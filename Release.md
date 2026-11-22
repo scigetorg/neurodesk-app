@@ -2,19 +2,20 @@
 
 ## Sciget name transition
 
-The first Sciget-branded release is version 2.2.0. Publish it as a new version
-in the existing `scigetorg/neurodesk-app` repository so users of version 2.1.0
-can discover it. Keep the `neurodeskapp` package name, `NeurodeskApp` bundle and
-executable name, `org.neurodesk.neurodeskapp` app ID, and existing release asset
-names (including `latest.yml`). These are upgrade identifiers and paths, even
-though the displayed app name is Sciget. Keep signing with the existing identity.
-Older builds use the `NeuroDesk/neurodesk-app` release URL; verify that GitHub
-still redirects it to `scigetorg/neurodesk-app` before publishing.
+The app was renamed from `NeurodeskApp` to `ScigetApp` in version 2.2.0.
+The `neurodeskapp` package name (`name` in package.json) and
+`org.neurodesk.neurodeskapp` app ID are kept unchanged so that
+`electron-updater` recognises the new release as an update for existing
+installations. Keep signing with the existing Apple identity.
+
+The Windows NSIS installer cleans up the old `C:\NeurodeskApp` directory.
+The Linux post-install script creates a backward-compatible `neurodeskapp`
+symlink. The macOS CLI setup creates a `neurodeskapp` alias alongside the
+primary `scigetapp` command.
 
 Before publishing, confirm that the signed Windows installer updates an existing
 installation, that the macOS ZIP updater replaces the existing app, and that the
-Linux package upgrades in place. Verify that settings and sessions are still
-present after each upgrade. The CI build and unit tests check the source-side
+Linux package upgrades in place. The CI build and unit tests check the source-side
 compatibility contract but cannot substitute for these installer checks.
 
 ## Dependencies

@@ -30,10 +30,10 @@ jobs:
       fail-fast: false
       matrix:
         cfg:
-          - { platform: linux-64, platform_name: Linux x64,  os: ubuntu-22.04, tinyrange_os: linux-amd64, engine: docker, artifact: NeurodeskApp-debian-installer-x64 }
-          # - { platform: mac, platform_name: macOS, os: macos-15, tinyrange_os: darwin-arm64, engine: tinyrange, artifact: NeurodeskApp-mac-installer-arm64 }
-          # - { platform: win, platform_name: Windows, os: windows-latest, tinyrange_os: windows-amd64, engine: tinyrange, artifact: NeurodeskApp-windows-installer }
-          # - { platform: linux-64, platform_name: Linux x64,  os: ubuntu-latest, tinyrange_os: linux-amd64, engine: tinyrange, artifact: NeurodeskApp-debian-installer-x64 }
+          - { platform: linux-64, platform_name: Linux x64,  os: ubuntu-22.04, tinyrange_os: linux-amd64, engine: docker, artifact: ScigetApp-debian-installer-x64 }
+          # - { platform: mac, platform_name: macOS, os: macos-15, tinyrange_os: darwin-arm64, engine: tinyrange, artifact: ScigetApp-mac-installer-arm64 }
+          # - { platform: win, platform_name: Windows, os: windows-latest, tinyrange_os: windows-amd64, engine: tinyrange, artifact: ScigetApp-windows-installer }
+          # - { platform: linux-64, platform_name: Linux x64,  os: ubuntu-latest, tinyrange_os: linux-amd64, engine: tinyrange, artifact: ScigetApp-debian-installer-x64 }
 
     runs-on: ${{ matrix.cfg.os }}
     timeout-minutes: 60
@@ -138,7 +138,7 @@ jobs:
         if: matrix.cfg.platform == 'linux-64' || matrix.cfg.platform == 'linux-arm64'
         run: |
           sudo apt-get install -y xvfb
-          sudo dpkg -i dist/NeurodeskApp.deb || true
+          sudo dpkg -i dist/ScigetApp.deb || true
           sudo apt-get install -y -f
 
       - name: Install app (macOS)
@@ -151,9 +151,9 @@ jobs:
           HOMEBREW_NO_INSTALL_CLEANUP: 1
         run: |
           brew install qemu
-          hdiutil attach dist/NeurodeskApp-arm64.dmg -nobrowse -quiet -mountpoint /Volumes/NeurodeskApp
-          cp -R "/Volumes/NeurodeskApp/NeurodeskApp.app" /Applications/
-          hdiutil detach "/Volumes/NeurodeskApp" -quiet
+          hdiutil attach dist/ScigetApp-arm64.dmg -nobrowse -quiet -mountpoint /Volumes/ScigetApp
+          cp -R "/Volumes/ScigetApp/ScigetApp.app" /Applications/
+          hdiutil detach "/Volumes/ScigetApp" -quiet
 
       - name: Install app (Windows)
         if: matrix.cfg.platform == 'win'
@@ -270,13 +270,13 @@ jobs:
 
           if [ "${{ matrix.cfg.platform }}" = "linux-64" ] || [ "${{ matrix.cfg.platform }}" = "linux-arm64" ]; then
             WORKING_DIR="/tmp/neurodesk-test"
-            APP_BIN="/opt/NeurodeskApp/neurodeskapp"
+            APP_BIN="/opt/ScigetApp/scigetapp"
           elif [ "${{ matrix.cfg.platform }}" = "mac" ]; then
             WORKING_DIR="/tmp/neurodesk-test"
-            APP_BIN="/Applications/NeurodeskApp.app/Contents/MacOS/NeurodeskApp"
+            APP_BIN="/Applications/ScigetApp.app/Contents/MacOS/ScigetApp"
           else
             WORKING_DIR="$TEMP/neurodesk-test"
-            APP_BIN="dist/NeurodeskApp-Setup.exe"
+            APP_BIN="dist/ScigetApp-Setup.exe"
             APP_LOG="$TEMP/neurodeskapp-stdout.log"
           fi
 
@@ -343,11 +343,11 @@ jobs:
           for i in $(seq 1 360); do
             # Fail fast if the Electron app process has already exited
             if [ "${{ matrix.cfg.platform }}" = "mac" ]; then
-              APP_ALIVE=$(pgrep -f "NeurodeskApp.app/Contents/MacOS/NeurodeskApp" >/dev/null 2>&1 && echo 1 || echo 0)
+              APP_ALIVE=$(pgrep -f "ScigetApp.app/Contents/MacOS/ScigetApp" >/dev/null 2>&1 && echo 1 || echo 0)
             elif [ "${{ matrix.cfg.platform }}" = "win" ]; then
-              APP_ALIVE=$(tasklist //FI "IMAGENAME eq NeurodeskApp.exe" 2>/dev/null | grep -q NeurodeskApp && echo 1 || echo 0)
+              APP_ALIVE=$(tasklist //FI "IMAGENAME eq ScigetApp.exe" 2>/dev/null | grep -q ScigetApp && echo 1 || echo 0)
             else
-              APP_ALIVE=$(pgrep -x neurodeskapp >/dev/null 2>&1 && echo 1 || echo 0)
+              APP_ALIVE=$(pgrep -x scigetapp >/dev/null 2>&1 && echo 1 || echo 0)
             fi
             if [ "$APP_ALIVE" = "0" ]; then
               echo "FAIL: Electron app exited before backend was ready"
@@ -566,13 +566,13 @@ jobs:
           echo "=== Sending SIGTERM to Electron app by process name ==="
           if [ "${{ matrix.cfg.platform }}" = "win" ]; then
             # Graceful termination request by image name (no /F = not forced)
-            taskkill //IM NeurodeskApp.exe //T 2>/dev/null || true
+            taskkill //IM ScigetApp.exe //T 2>/dev/null || true
           elif [ "${{ matrix.cfg.platform }}" = "mac" ]; then
             # Match on full command path since macOS binary name varies
-            pkill -TERM -f "NeurodeskApp.app/Contents/MacOS/NeurodeskApp" || true
+            pkill -TERM -f "ScigetApp.app/Contents/MacOS/ScigetApp" || true
           else
             # Exact match on Linux binary name, avoids hitting xvfb-run or Xvfb
-            pkill -TERM -x neurodeskapp || true
+            pkill -TERM -x scigetapp || true
           fi
 
           echo "=== Waiting for backend to stop ==="
@@ -645,11 +645,11 @@ jobs:
           echo "=== Force cleanup ==="
           # Kill app if still running (by process name, not PID)
           if [ "${{ matrix.cfg.platform }}" = "win" ]; then
-            taskkill //IM NeurodeskApp.exe //T //F 2>/dev/null || true
+            taskkill //IM ScigetApp.exe //T //F 2>/dev/null || true
           elif [ "${{ matrix.cfg.platform }}" = "mac" ]; then
-            pkill -9 -f "NeurodeskApp.app/Contents/MacOS/NeurodeskApp" 2>/dev/null || true
+            pkill -9 -f "ScigetApp.app/Contents/MacOS/ScigetApp" 2>/dev/null || true
           else
-            pkill -9 -x neurodeskapp 2>/dev/null || true
+            pkill -9 -x scigetapp 2>/dev/null || true
           fi
 
           # Remove any leftover containers (Docker/Podman)
