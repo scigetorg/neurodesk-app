@@ -131,6 +131,33 @@ export class WelcomeView {
               box-shadow: 0 20px 40px rgba(66, 66, 66, 0.4);
           }
 
+          .app-card-header {
+              display: flex;
+              align-items: flex-start;
+              justify-content: space-between;
+              gap: 8px;
+          }
+
+          .fav-btn {
+              background: none;
+              border: none;
+              cursor: pointer;
+              font-size: 1.3rem;
+              line-height: 1;
+              padding: 2px;
+              color: #cbd5e0;
+              transition: color 0.2s ease, transform 0.2s ease;
+              flex-shrink: 0;
+          }
+
+          .fav-btn:hover {
+              transform: scale(1.2);
+          }
+
+          .fav-btn.favorited {
+              color: #d97706;
+          }
+
           .app-title {
               font-size: 1.4rem;
               font-weight: 600;
@@ -646,6 +673,13 @@ export class WelcomeView {
 
           // Container catalog entries; replaced by onSetMiniApps after a refresh.
           let miniApps = ${miniAppsJson};
+          let favoriteIds = new Set();
+
+          // Load favorites from main process
+          window.electronAPI.getFavorites().then(ids => {
+            favoriteIds = new Set(ids);
+            renderApps(filterApps(searchInput.value));
+          });
 
           // Function to filter apps based on search term
           function filterApps(searchTerm) {
@@ -673,8 +707,25 @@ export class WelcomeView {
               const card = el('div', 'app-card');
               // Catalog ID as element id: the E2E selector finds cards by it.
               card.id = app.id;
+
+              const header = el('div', 'app-card-header');
+              header.append(el('h3', 'app-title', app.title));
+
+              const favBtn = el('button', 'fav-btn');
+              const isFav = favoriteIds.has(app.id);
+              favBtn.textContent = isFav ? '\\u2605' : '\\u2606';
+              if (isFav) favBtn.classList.add('favorited');
+              favBtn.title = isFav ? 'Remove from favorites' : 'Add to favorites';
+              favBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const updated = await window.electronAPI.toggleFavorite(app.id);
+                favoriteIds = new Set(updated);
+                renderApps(filterApps(searchInput.value));
+              });
+              header.append(favBtn);
+
               card.append(
-                  el('h3', 'app-title', app.title),
+                  header,
                   el('p', 'app-description', app.description)
               );
               const buttons = el('div', 'launch-buttons');
@@ -717,7 +768,12 @@ export class WelcomeView {
               }
 
 
-              appsGrid.replaceChildren(...filteredApps.map(createAppCard));
+              const sorted = [...filteredApps].sort((a, b) => {
+                const aFav = favoriteIds.has(a.id) ? 0 : 1;
+                const bFav = favoriteIds.has(b.id) ? 0 : 1;
+                return aFav - bFav;
+              });
+              appsGrid.replaceChildren(...sorted.map(createAppCard));
               // Static markup from the bundled page, not catalog data.
               appsGrid.insertAdjacentHTML('beforeend', announcementHTML);
           }
