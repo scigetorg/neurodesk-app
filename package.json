@@ -66,6 +66,7 @@
     ],
     "afterSign": "scripts/notarize.js",
     "linux": {
+      "executableName": "scigetapp",
       "target": [
         "deb",
         "rpm"
