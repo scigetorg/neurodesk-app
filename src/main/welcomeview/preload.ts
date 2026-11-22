@@ -75,6 +75,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openNewsLink: (newsLink: string) => {
     ipcRenderer.send(EventTypeMain.OpenNewsLink, newsLink);
   },
+  getFavorites: (): Promise<string[]> => {
+    return ipcRenderer.invoke(EventTypeMain.GetFavorites);
+  },
+  toggleFavorite: (id: string): Promise<string[]> => {
+    return ipcRenderer.invoke(EventTypeMain.ToggleFavorite, id);
+  },
   sendMessageToMain: (message: string, ...args: any[]) => {
     ipcRenderer.send(message, ...args);
   },

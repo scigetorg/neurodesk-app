@@ -52,7 +52,9 @@ export enum EventTypeMain {
   GetChildProcressLog = 'get-child-process-log',
   SetAuthDialogResponse = 'set-auth-dialog-response',
   SetTelemetryConsent = 'set-telemetry-consent',
-  FetchReleases = 'fetch-releases'
+  FetchReleases = 'fetch-releases',
+  GetFavorites = 'get-favorites',
+  ToggleFavorite = 'toggle-favorite'
 }
 
 // events sent to Renderer process

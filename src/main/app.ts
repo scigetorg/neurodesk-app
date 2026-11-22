@@ -849,6 +849,19 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     );
 
+    this._evm.registerSyncEventHandler(EventTypeMain.GetFavorites, () => {
+      const { getFavorites } = require('./config/favorites');
+      return getFavorites();
+    });
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ToggleFavorite,
+      (event, id: string) => {
+        const { toggleFavorite } = require('./config/favorites');
+        return toggleFavorite(id);
+      }
+    );
+
     this._evm.registerSyncEventHandler(
       EventTypeMain.ClearHistory,
       async (event, options: IClearHistoryOptions) => {
