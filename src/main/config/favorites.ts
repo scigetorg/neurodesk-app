@@ -15,7 +15,9 @@ function load(): Set<string> {
   try {
     const data = fs.readFileSync(filePath(), 'utf-8');
     const ids: unknown = JSON.parse(data);
-    favorites = new Set(Array.isArray(ids) ? ids.filter(id => typeof id === 'string') : []);
+    favorites = new Set(
+      Array.isArray(ids) ? ids.filter(id => typeof id === 'string') : []
+    );
   } catch {
     favorites = new Set();
   }
