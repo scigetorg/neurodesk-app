@@ -64,6 +64,7 @@
       "env_installer/ScigetAppAppServer-*[.sh,.exe]",
       "build/schemas"
     ],
+    "afterPack": "scripts/afterpack.js",
     "afterSign": "scripts/notarize.js",
     "linux": {
       "executableName": "scigetapp",
