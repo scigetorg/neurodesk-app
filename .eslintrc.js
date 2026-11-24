@@ -76,6 +76,7 @@ module.exports = {
           'display_data',
           'display_id',
           'display_name',
+          'eessi_stacks',
           'embed_options',
           'execute_input',
           'execute_result',
