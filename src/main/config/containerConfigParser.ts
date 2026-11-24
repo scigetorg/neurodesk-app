@@ -84,6 +84,7 @@ export interface ContainerConfig {
   description?: string;
   remoteUrl?: string[];
   appJsonUrl?: string;
+  eessiCatalogUrl?: string;
   downloadUrls?: string[];
   tags?: string[];
 }

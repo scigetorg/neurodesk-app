@@ -427,12 +427,34 @@ describe('refresh', () => {
       expect(catalog.getEntry('neurodesk').defaultVersion).toBe('good');
     });
 
-    it('does not copy pipeline fields such as source_repositories', async () => {
-      remote = doc({ neurodesk: entry() });
+    it('does not copy pipeline fields such as source_repositories and eessi_stacks', async () => {
+      remote = JSON.stringify({
+        schemaVersion: 1,
+        domains: {
+          neurodesk: {
+            source_repositories: ['NeuroDesk/neurocontainers'],
+            eessi_stacks: ['2025.06'],
+            eessiCatalogUrl:
+              'https://apps-catalog.scigetorg.workers.dev/neuroimaging/eessi.json',
+            ...entry()
+          },
+          preclinical: {
+            source_repositories: ['NeuroDesk/neurocontainers'],
+            eessi_stacks: ['2025.06'],
+            eessiCatalogUrl:
+              'https://apps-catalog.scigetorg.workers.dev/preclinical/eessi.json'
+          }
+        }
+      });
       const catalog = makeCatalog();
       await catalog.refresh();
+      expect(catalog.getIds()).toEqual(['neurodesk']);
       expect(catalog.getEntry('neurodesk')).not.toHaveProperty(
         'source_repositories'
+      );
+      expect(catalog.getEntry('neurodesk')).not.toHaveProperty('eessi_stacks');
+      expect(catalog.getEntry('neurodesk').eessiCatalogUrl).toBe(
+        'https://apps-catalog.scigetorg.workers.dev/neuroimaging/eessi.json'
       );
     });
   });

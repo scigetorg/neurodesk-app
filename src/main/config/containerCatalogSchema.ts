@@ -40,6 +40,15 @@ export const TAG_LABEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$/;
 export const DESCRIPTION_PATTERN = /^[^<>&]{1,2000}$/;
 /** https URL with no characters that could leave an HTML attribute or JS string. */
 export const HTTPS_URL_PATTERN = /^https:\/\/[^\s"'<>`\\/]+(?:\/[^\s"'<>`\\]*)?$/;
+/** EESSI stack version (YYYY.MM, e.g. 2025.06). */
+export const EESSI_STACK_PATTERN = /^[0-9]{4}\.[0-9]{2}$/;
+
+/** Domain-level catalog pipeline fields that do not represent a desktop launch image. */
+export const CATALOG_ONLY_FIELDS = new Set([
+  'source_repositories',
+  'eessi_stacks',
+  'eessiCatalogUrl'
+]);
 
 export const MAX_REMOTE_URLS = 10;
 export const MAX_DOWNLOAD_URLS = 10;
@@ -153,6 +162,14 @@ export function validateCatalogEntry(
     }
   }
 
+  if (raw.eessiCatalogUrl !== undefined) {
+    if (isHttpsUrl(raw.eessiCatalogUrl)) {
+      entry.eessiCatalogUrl = raw.eessiCatalogUrl;
+    } else {
+      fail('eessiCatalogUrl', 'must be an https URL');
+    }
+  }
+
   if (raw.downloadUrls !== undefined) {
     const urls = raw.downloadUrls;
     if (
@@ -220,7 +237,7 @@ export type CatalogDocumentResult =
  *
  *   { schemaVersion: 1,
  *     domains: { neuroimaging: { source_repositories: [...], registry: ... },
- *                microscopy:   { source_repositories: [...] } } }
+ *                microscopy:   { source_repositories: [...], eessi_stacks: [...] } } }
  *       ──► { neuroimaging: {...} }      (a domain without launch fields is skipped)
  *
  * Entries are validated one at a time by the caller so that one bad entry
@@ -248,7 +265,7 @@ export function parseCatalogDocument(raw: unknown): CatalogDocumentResult {
       // Not skipped silently: validation rejects it and the caller falls
       // back to the last good entry for this ID.
       entries[id] = domain;
-    } else if (Object.keys(domain).some(key => key !== 'source_repositories')) {
+    } else if (Object.keys(domain).some(key => !CATALOG_ONLY_FIELDS.has(key))) {
       entries[id] = domain;
     }
   }

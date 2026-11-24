@@ -80,6 +80,13 @@ const INVALID: Array<[string, string, unknown]> = [
   ],
   ['javascript appJsonUrl', 'appJsonUrl', 'javascript:alert(1)'],
   ['appJsonUrl with quote', 'appJsonUrl', "https://a.org/x'y"],
+  [
+    'http eessiCatalogUrl',
+    'eessiCatalogUrl',
+    'http://example.org/neuroimaging/eessi.json'
+  ],
+  ['javascript eessiCatalogUrl', 'eessiCatalogUrl', 'javascript:alert(1)'],
+  ['eessiCatalogUrl with quote', 'eessiCatalogUrl', "https://a.org/x'y"],
   ['download url not https', 'downloadUrls', ['http://example.org/{file}']],
   ['download url with quote', 'downloadUrls', ["https://a.org/'{file}"]],
   ['download url with backtick', 'downloadUrls', ['https://a.org/`{file}`']],
@@ -300,6 +307,26 @@ describe('parseCatalogDocument', () => {
     ).toEqual({ ok: true, entries: {} });
   });
 
+  it('skips domains with only catalog pipeline and EESSI fields', () => {
+    expect(
+      parseCatalogDocument({
+        schemaVersion: 1,
+        domains: {
+          preclinical: {
+            source_repositories: ['NeuroDesk/neurocontainers'],
+            eessi_stacks: ['2025.06'],
+            eessiCatalogUrl:
+              'https://apps-catalog.scigetorg.workers.dev/preclinical/eessi.json'
+          },
+          hpc: {
+            source_repositories: [],
+            eessi_stacks: ['2025.06']
+          }
+        }
+      })
+    ).toEqual({ ok: true, entries: {} });
+  });
+
   it.each([
     ['not an object', []],
     ['null', null],
@@ -359,6 +386,110 @@ describe('domains.schema.json agrees with validateCatalogEntry', () => {
     ).toBe(true);
   });
 
+  it('accepts hybrid, catalog-only EESSI, and EESSI-only domains', () => {
+    const ok = ajvValidate({
+      schemaVersion: 1,
+      domains: {
+        neuroimaging: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          eessi_stacks: ['2025.06'],
+          eessiCatalogUrl:
+            'https://apps-catalog.scigetorg.workers.dev/neuroimaging/eessi.json',
+          ...validEntry()
+        },
+        preclinical: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          eessi_stacks: ['2025.06'],
+          eessiCatalogUrl:
+            'https://apps-catalog.scigetorg.workers.dev/preclinical/eessi.json'
+        },
+        hpc: {
+          source_repositories: [],
+          eessi_stacks: ['2025.06', '2023.06'],
+          eessiCatalogUrl:
+            'https://apps-catalog.scigetorg.workers.dev/hpc/eessi.json'
+        }
+      }
+    });
+    expect(ajvValidate.errors).toBeNull();
+    expect(ok).toBe(true);
+  });
+
+  it.each([
+    [
+      'empty source_repositories without eessi_stacks',
+      { empty: { source_repositories: [] } }
+    ],
+    [
+      'empty eessi_stacks',
+      {
+        neuroimaging: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          eessi_stacks: []
+        }
+      }
+    ],
+    [
+      'duplicate eessi_stacks',
+      {
+        neuroimaging: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          eessi_stacks: ['2025.06', '2025.06']
+        }
+      }
+    ],
+    [
+      'malformed eessi_stacks entry',
+      {
+        neuroimaging: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          eessi_stacks: ['2025.6']
+        }
+      }
+    ],
+    [
+      'eessiCatalogUrl without eessi_stacks',
+      {
+        neuroimaging: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          eessiCatalogUrl:
+            'https://apps-catalog.scigetorg.workers.dev/neuroimaging/eessi.json'
+        }
+      }
+    ],
+    [
+      'non-https eessiCatalogUrl with eessi_stacks',
+      {
+        neuroimaging: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          eessi_stacks: ['2025.06'],
+          eessiCatalogUrl:
+            'http://apps-catalog.scigetorg.workers.dev/neuroimaging/eessi.json'
+        }
+      }
+    ],
+    [
+      'reserved domain ID eessi',
+      {
+        eessi: {
+          source_repositories: ['NeuroDesk/neurocontainers']
+        }
+      }
+    ],
+    [
+      'partial launch fields alongside EESSI fields',
+      {
+        preclinical: {
+          source_repositories: ['NeuroDesk/neurocontainers'],
+          eessi_stacks: ['2025.06'],
+          tags: ['preclinical']
+        }
+      }
+    ]
+  ])('rejects %s', (_label, domains) => {
+    expect(ajvValidate({ schemaVersion: 1, domains })).toBe(false);
+  });
+
   it('rejects a domain with no source repositories', () => {
     expect(
       ajvValidate({
@@ -393,6 +524,8 @@ describe('domains.schema.json agrees with validateCatalogEntry', () => {
     expectPattern('HTTPS_URL_PATTERN', props.releaseHistoryUrl.pattern);
     expectPattern('HTTPS_URL_PATTERN', props.remoteUrl.items.pattern);
     expectPattern('HTTPS_URL_PATTERN', props.appJsonUrl.pattern);
+    expectPattern('HTTPS_URL_PATTERN', props.eessiCatalogUrl.pattern);
+    expectPattern('EESSI_STACK_PATTERN', props.eessi_stacks.items.pattern);
     expectPattern('DOWNLOAD_URL_PATTERN', props.downloadUrls.items.pattern);
     expectPattern('TAG_LABEL_PATTERN', props.tags.items.pattern);
     expectPattern(
