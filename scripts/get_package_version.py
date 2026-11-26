@@ -7,6 +7,8 @@ def get_package_version(path, package_name):
         package = json.load(f)
         if package_name == 'neurodesk':
             return package['version']
+        elif package_name == 'tinyrange':
+            return package['tinyrange_version']
         else:
             raise ValueError(f"Unknown package: {package}")
 

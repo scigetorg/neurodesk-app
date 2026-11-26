@@ -31,7 +31,7 @@ describe('resolveContainerName', () => {
     for (const engineType of [
       EngineType.Docker,
       EngineType.Podman,
-      EngineType.CrumbleCracker
+      EngineType.TinyRange
     ]) {
       expect(resolveContainerName(engineType, 'neurodeskapp')).toBe(
         'neurodeskapp'
@@ -39,8 +39,7 @@ describe('resolveContainerName', () => {
     }
   });
 
-  it('does not shell out for native engines (no container to remove)', () => {
-    resolveContainerName(EngineType.CrumbleCracker, 'neurodeskapp');
+  it('does not shell out for TinyRange (no container to remove)', () => {
     resolveContainerName(EngineType.TinyRange, 'neurodeskapp');
     expect(execSyncMock).not.toHaveBeenCalled();
   });
