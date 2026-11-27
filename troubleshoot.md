@@ -1,22 +1,22 @@
-# Troubleshooting Neurodesk App
+# Troubleshooting Sciget
 
-Understanding how Neurodesk App (JLD) works will greatly help in troubleshooting issues. Check out the [How Neurodesk App works section in User Guide](user-guide.md#How-JupyterLab-Desktop-works) first.
+Understanding how Sciget works will help in troubleshooting issues. See the [user guide](user-guide.md) for setup and connection details.
 
-Below are detailed information on topics which commonly come up in questions and issues reported about Neurodesk App. Please read through the topics relavant to the issues you are experiencing. You might be able to resolve the issues on your own.
+Below are detailed information on topics which commonly come up in questions and issues reported about Sciget. Please read through the topics relavant to the issues you are experiencing. You might be able to resolve the issues on your own.
 
 - [Settings locations and resetting](#Settings-locations-and-resetting)
 - [Logs](#Logs)
 - [Installation Paths](#Installation-Paths)
-- [After Neurodesk App update, why there is still the old JupyterLab Web Application version?](#after-jupyterlab-desktop-update-why-there-is-still-the-old-jupyterlab-web-application-version)
+- [After Sciget update, why there is still the old JupyterLab Web Application version?](#after-jupyterlab-desktop-update-why-there-is-still-the-old-jupyterlab-web-application-version)
 - [macOS write permission issues](#macOS-write-permission-issues)
 - [Windows uninstall issues](#Windows-uninstall-issues)
-- [Double clicking .ipynb files not launching Neurodesk App](#double-clicking-ipynb-files-not-launching-neurodesk-app)
+- [Double clicking .ipynb files not launching Sciget](#double-clicking-ipynb-files-not-launching-sciget)
 - [Debugging application launch issues](#Debugging-application-launch-issues)
 - [Linux docker permission denied](#linux-docker-permission-denied)
 - [Debug Podman on relaunch](#debug-podman-on-relaunch)
 - [FATAL:setuid_sandbox_host.cc(158)](#fatalsetuid_sandbox_hostcc158)
 - [Development build crashes when opening child windows on Ubuntu 24.04](#development-build-crashes-when-opening-child-windows-on-ubuntu-2404)
-- [Running Neurodesk App with Podman on restricted Linux systems](#running-neurodesk-app-with-podman-on-restricted-linux-systems)
+- [Running Sciget with Podman on restricted Linux systems](#running-sciget-with-podman-on-restricted-linux-systems)
 
 ## Settings locations and resetting
 
@@ -24,7 +24,7 @@ JLD stores user settings, project settings and application data in different loc
 
 ## Logs
 
-Neurodesk App saves logs in the following locations. Information about crashes, warnings and additional information might be available in logs. For troubleshooting purposes, it is recommended to set log level to Debug.
+Sciget saves logs in the following locations. Information about crashes, warnings and additional information might be available in logs. For troubleshooting purposes, it is recommended to set log level to Debug.
 
 - On Windows: `%APPDATA%\neurodeskapp\logs\main.log`
 - On macOS `~/Library/Logs/neurodeskapp/main.log`
@@ -53,7 +53,7 @@ In order to set log level via `settings.json` file, add the `logLevel` key with 
 
 ## Installation Paths
 
-Neurodesk App installers use the following paths for application. It is recommended to use these default paths. However, if these paths resolve to absolute paths that have spaces and / or special characters on your system, then you need to use a different path for `neurodesktop-storage` in Settings.
+Sciget installers use the following paths for application. It is recommended to use these default paths. However, if these paths resolve to absolute paths that have spaces and / or special characters on your system, then you need to use a different path for `neurodesktop-storage` in Settings.
 
 Application install paths:
 
@@ -91,14 +91,14 @@ chmod 755 /Applications/NeurodeskApp.app/Contents/Resources/app/neurodeskapp
 
 Installing and uninstalling multiple versions might leave dangling install metadata in the registry. You can clean these records by following these steps.
 
-1. Make sure no Neurodesk App or server instance is running (rebooting Windows should terminate them if any)
-2. If you want to uninstall any existing Neurodesk App and/or Server installation, go to Add / Remove Programs and remove all of the related installations.
+1. Make sure no Sciget or server instance is running (rebooting Windows should terminate them if any)
+2. If you want to uninstall any existing Sciget and/or Server installation, go to Add / Remove Programs and remove all of the related installations.
 3. If there are any dangling installations that cannot be removed from Add / Remove Programs then remove those dangling ones by following [the instructions here](https://support.microsoft.com/en-us/topic/removing-invalid-entries-in-the-add-remove-programs-tool-0dae27c1-0b06-2559-311b-635cd532a6d5) with care.
 4. The instructions in the link above may need to be followed also for: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall
 
-## Double clicking .ipynb files not launching Neurodesk App
+## Double clicking .ipynb files not launching Sciget
 
-Neurodesk App installers automatically associate `.ipynb` files with the application. If you are still having issues with launch by double clicking `.ipynb` files, you can fix it by right clicking the file and changing the default opener. Use the system specific `Open with...` dialog to set Neurodesk App as the default application to open `.ipynb` files with.
+Sciget installers automatically associate `.ipynb` files with the application. If you are still having issues with launch by double clicking `.ipynb` files, you can fix it by right clicking the file and changing the default opener. Use the system specific `Open with...` dialog to set Sciget as the default application to open `.ipynb` files with.
 
 ## Debugging application launch issues
 
@@ -269,10 +269,10 @@ helper, which ships non-setuid in `node_modules`, so sandbox setup fails.
   as the failing development run.
 - `NODE_ENV`. Setting or removing it changes nothing here.
 
-## Running Neurodesk App with Podman on restricted Linux systems
+## Running Sciget with Podman on restricted Linux systems
 
 {{< alert color="warning" >}}
-This is an **advanced** guide for getting the Neurodesk App working with **Podman** (instead of Docker) on locked-down Linux machines — for example, hosts that use **Active Directory (AD)** accounts, an **NFS-mounted** home or data directory, and where image pulls through the App tend to time out. On a standard desktop with Docker or rootful Podman you should **not** need any of this.
+This is an **advanced** guide for getting the Sciget working with **Podman** (instead of Docker) on locked-down Linux machines — for example, hosts that use **Active Directory (AD)** accounts, an **NFS-mounted** home or data directory, and where image pulls through the App tend to time out. On a standard desktop with Docker or rootful Podman you should **not** need any of this.
 
 The steps below were validated with **Podman 3.4.4 on Ubuntu 22**. Replace every `<placeholder>` with your own values.
 {{< /alert >}}

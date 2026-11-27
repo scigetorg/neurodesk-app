@@ -192,18 +192,23 @@ describe('launch script invariants', () => {
         expect(script).not.toContain('undefined');
         // TinyRange has no --name flag; only Docker/Podman name the container.
         if (engineType !== EngineType.TinyRange) {
-          expect(script).toContain('--name neurodeskapp');
+          expect(script).toContain(
+            `--name neurodeskapp-${
+              process.getuid?.() ?? os.userInfo().username
+            }`
+          );
         }
       }
     });
 
     it('names the container consistently across --name and the lifecycle commands', () => {
-      // --name comes from the config, the rm/logs commands from the same
-      // parser — they must never drift apart.
+      const name = `neurodeskapp-${
+        process.getuid?.() ?? os.userInfo().username
+      }`;
       for (const engineType of [EngineType.Docker, EngineType.Podman]) {
         const script = generateLaunchScript(baseParams({ engineType }));
-        expect(script).toContain('--name neurodeskapp');
-        expect(script).toContain(`${engineType} logs -f neurodeskapp`);
+        expect(script).toContain(`--name ${name}`);
+        expect(script).toContain(`${engineType} logs -f ${name}`);
       }
     });
 
@@ -240,6 +245,29 @@ describe('launch script invariants', () => {
   });
 
   // ── Cross-engine env parity ──
+
+  // ── Network identity on shared hosts ──
+  //
+  // Containers that share a MAC (or a fixed IP) on one bridge leave all but
+  // one unreachable, so on a shared host the MAC must be per user.
+  describe('shared host never emits the legacy MAC or a static IP', () => {
+    const cases: Array<[string, EngineType]> = [];
+    for (const platform of PLATFORMS) {
+      cases.push([platform, EngineType.Docker]);
+      cases.push([platform, EngineType.Podman]);
+    }
+
+    it.each(cases)('%s / %s', (platform, engineType) => {
+      const script = generateLaunchScript(
+        baseParams({ platform, engineType, sharedHost: true })
+      );
+      expect(script).toMatch(
+        /(--mac-address=|bridge:mac=)([0-9a-f]{2}:){5}[0-9a-f]{2}/
+      );
+      expect(script).not.toContain('88:75:56:ef:3e:d6');
+      expect(script).not.toMatch(/bridge:ip=/);
+    });
+  });
 
   describe('environment variables', () => {
     // The image needs these regardless of engine. Docker/Podman emit them

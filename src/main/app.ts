@@ -46,10 +46,11 @@ import { AuthDialog } from './authdialog/authdialog';
 import * as path from 'path';
 import { ConsentDialog } from './consentdialog/consentdialog';
 import { closeTelemetry, initTelemetry } from './telemetry';
+import { getDefaultStorageDirectory } from './config/storageMount';
 import {
-  getDefaultStorageDirectory,
-  readDefaultStorageMount
-} from './config/storageMount';
+  defaultStorageMount,
+  getContainerCatalog
+} from './config/catalogInstance';
 
 const release = require(path.join(__dirname, '..', 'package.json')).version;
 
@@ -175,17 +176,22 @@ class SessionWindowManager implements IDisposable {
 
     window.sessionConfigChanged.connect(this.syncSessionData, this);
 
-    window.window.on('close', async event => {
+    window.window.on('close', async () => {
       const index = this._windows.indexOf(window);
       if (index !== -1) {
         window.sessionConfigChanged.disconnect(this.syncSessionData, this);
-        await window.dispose();
-        this._windows.splice(index, 1);
-        this.syncSessionData();
+        try {
+          await window.dispose();
+        } catch (error) {
+          log.error('Failed to dispose session window:', error);
+        } finally {
+          this._windows.splice(index, 1);
+          this.syncSessionData();
 
-        if (this._windows.length === 0) {
-          this._options.app.closeSettingsDialog();
-          this._options.app.closeAboutDialog();
+          if (this._windows.length === 0) {
+            this._options.app.closeSettingsDialog();
+            this._options.app.closeAboutDialog();
+          }
         }
       }
     });
@@ -243,7 +249,7 @@ export function getNeurodesktopStoragePath(): string {
   }
   return getDefaultStorageDirectory(
     process.platform,
-    readDefaultStorageMount(),
+    defaultStorageMount(),
     app.getPath('home')
   );
 }
@@ -272,6 +278,9 @@ export class JupyterApplication implements IApplication, IDisposable {
     });
 
     createNeurodesktopStorage();
+    // Fetch the hosted container catalog in the background; until it
+    // arrives, sessions use the cached or bundled one. Never rejects.
+    void getContainerCatalog().refresh({ force: true });
 
     // create a server in advance
     // this._serverFactory.createFreeServer().catch(error => {
@@ -498,7 +507,21 @@ export class JupyterApplication implements IApplication, IDisposable {
       };
 
       dialog.showMessageBox(dialogOpts).then(returnValue => {
-        if (returnValue.response === 0) autoUpdater.quitAndInstall();
+        if (returnValue.response === 0) {
+          // On macOS, Squirrel replaces the .app bundle with the new
+          // productName (ScigetApp.app), so the old relaunch path
+          // (NeurodeskApp.app) no longer exists.  Tell Electron to
+          // relaunch from the new location before Squirrel quits the app.
+          if (process.platform === 'darwin') {
+            const newExecPath = process.execPath
+              .replace(/NeurodeskApp\.app/g, 'ScigetApp.app')
+              .replace(/\/MacOS\/NeurodeskApp$/, '/MacOS/ScigetApp');
+            if (newExecPath !== process.execPath) {
+              app.relaunch({ execPath: newExecPath });
+            }
+          }
+          autoUpdater.quitAndInstall();
+        }
       });
     });
 
@@ -599,7 +622,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.LaunchInstallerDownloadPage,
       () => {
         shell.openExternal(
-          'https://github.com/NeuroDesk/neurodesk-app/releases'
+          'https://github.com/scigetorg/neurodesk-app/releases'
         );
       }
     );
@@ -840,6 +863,19 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     );
 
+    this._evm.registerSyncEventHandler(EventTypeMain.GetFavorites, () => {
+      const { getFavorites } = require('./config/favorites');
+      return getFavorites();
+    });
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ToggleFavorite,
+      (event, id: string) => {
+        const { toggleFavorite } = require('./config/favorites');
+        return toggleFavorite(id);
+      }
+    );
+
     this._evm.registerSyncEventHandler(
       EventTypeMain.ClearHistory,
       async (event, options: IClearHistoryOptions) => {
@@ -885,7 +921,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     // cache: no-store prevents serving a stale latest.yml across sessions.
     net
       .fetch(
-        'https://github.com/NeuroDesk/neurodesk-app/releases/latest/download/latest.yml',
+        'https://github.com/scigetorg/neurodesk-app/releases/latest/download/latest.yml',
         { cache: 'no-store' }
       )
       .then(async response => {

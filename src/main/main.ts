@@ -12,6 +12,78 @@ import { SettingType, userSettings } from './config/settings';
 
 const release = require(path.join(__dirname, '..', 'package.json')).version;
 
+function setDisplayNamePreservingUserData(displayName: string): void {
+  const userDataPath = app.getPath('userData');
+  app.setName(displayName);
+  app.setPath('userData', userDataPath);
+}
+
+setDisplayNamePreservingUserData('Sciget App');
+
+/** Move settings from a stale config directory (e.g. an interim rename) into
+ *  the current userData path so users don't lose their settings. */
+function migrateStaleConfigDir(): void {
+  const currentDir = app.getPath('userData');
+  const staleNames = ['scigetapp', 'Sciget', 'Sciget App', 'ScigetApp'];
+  const homeDir = app.getPath('home');
+  let candidates: string[] = [];
+
+  if (process.platform === 'linux') {
+    const configBase =
+      process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
+    candidates = staleNames.map(n => path.join(configBase, n));
+  } else if (process.platform === 'darwin') {
+    candidates = staleNames.map(n =>
+      path.join(homeDir, 'Library', 'Application Support', n)
+    );
+  } else if (process.platform === 'win32') {
+    const appData =
+      process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+    candidates = staleNames.map(n => path.join(appData, n));
+  }
+
+  for (const staleDir of candidates) {
+    if (
+      staleDir !== currentDir &&
+      fs.existsSync(staleDir) &&
+      fs.existsSync(path.join(staleDir, 'settings.json'))
+    ) {
+      try {
+        // Only migrate if the current dir has no settings yet
+        if (!fs.existsSync(path.join(currentDir, 'settings.json'))) {
+          if (!fs.existsSync(currentDir)) {
+            fs.mkdirSync(currentDir, { recursive: true });
+          }
+          for (const file of fs.readdirSync(staleDir)) {
+            const src = path.join(staleDir, file);
+            const dest = path.join(currentDir, file);
+            if (!fs.existsSync(dest)) {
+              const stat = fs.statSync(src);
+              if (stat.isDirectory()) {
+                fs.mkdirSync(dest, { recursive: true });
+                for (const child of fs.readdirSync(src)) {
+                  fs.copyFileSync(
+                    path.join(src, child),
+                    path.join(dest, child)
+                  );
+                }
+              } else {
+                fs.copyFileSync(src, dest);
+              }
+            }
+          }
+        }
+        // Remove the stale directory after migration
+        fs.rmSync(staleDir, { recursive: true, force: true });
+      } catch {
+        // Best-effort: don't block startup
+      }
+    }
+  }
+}
+
+migrateStaleConfigDir();
+
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
 
@@ -35,16 +107,16 @@ require('fix-path')();
 
 function parseArgs(argv: string[]) {
   return yargs(argv)
-    .usage('neurodeskapp [options] folder/file paths')
-    .example('neurodeskapp', 'Launch in default working directory')
-    .example('neurodeskapp .', 'Launch in current directory')
+    .usage('scigetapp [options] folder/file paths')
+    .example('scigetapp', 'Launch in default working directory')
+    .example('scigetapp .', 'Launch in current directory')
     .example(
-      'neurodeskapp /data/nb/test.ipynb',
+      'scigetapp /data/nb/test.ipynb',
       'Launch in /data/nb and open test.ipynb'
     )
-    .example('neurodeskapp /data/nb', 'Launch in /data/nb')
+    .example('scigetapp /data/nb', 'Launch in /data/nb')
     .example(
-      'neurodeskapp --working-dir /data/nb test.ipynb sub/test2.ipynb',
+      'scigetapp --working-dir /data/nb test.ipynb sub/test2.ipynb',
       'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
     )
     .option('working-dir', {
@@ -106,10 +178,10 @@ console.debug = log.debug;
 const thisYear = new Date().getFullYear();
 
 app.setAboutPanelOptions({
-  applicationName: 'Neurodesk App',
+  applicationName: 'Sciget App',
   applicationVersion: release,
   version: release,
-  website: 'https://www.neurodesk.org/',
+  website: 'https://github.com/scigetorg/neurodesk-app',
   copyright: `© MIT License ${thisYear}`
 });
 
@@ -145,8 +217,9 @@ function setupJLabCommand() {
     return;
   }
 
-  const symlinkPath = '/usr/local/bin/neurodeskapp';
-  const targetPath = `${getAppDir()}/app/neurodeskapp`;
+  const symlinkPath = '/usr/local/bin/scigetapp';
+  const legacyPath = '/usr/local/bin/neurodeskapp';
+  const targetPath = `${getAppDir()}/app/scigetapp`;
 
   if (!fs.existsSync(targetPath)) {
     return;
@@ -157,6 +230,11 @@ function setupJLabCommand() {
       const cmd = `ln -s ${targetPath} ${symlinkPath}`;
       execSync(cmd, { shell: '/bin/bash' });
       fs.chmodSync(symlinkPath, 0o755);
+    }
+
+    // Backward-compatible alias so "neurodeskapp" still works
+    if (!fs.existsSync(legacyPath)) {
+      execSync(`ln -s ${symlinkPath} ${legacyPath}`, { shell: '/bin/bash' });
     }
 
     // after a DMG install, mode resets

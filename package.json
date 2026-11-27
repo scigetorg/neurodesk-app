@@ -1,9 +1,9 @@
 {
   "name": "neurodeskapp",
   "jlab_version": "4.0.0-1",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "tinyrange_version": "0.4.0",
-  "description": "Neurodesk App",
+  "description": "Sciget desktop app for scientific computing",
   "main": "./build/out/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -28,9 +28,9 @@
     "dist:win": "yarn build && electron-builder --win --publish never -c.win.verifyUpdateCodeSignature=false",
     "dockerdist:linux": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:linux\"",
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
-    "create_env_installer:linux": "rimraf ./env_installer/NeurodeskApp*.sh && constructor ./env_installer --platform=linux-64 --output-dir ./env_installer",
-    "create_env_installer:mac": "rimraf ./env_installer/NeurodeskApp*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
-    "create_env_installer:win": "rimraf ./env_installer/NeurodeskApp*.exe && constructor ./env_installer --platform=win-64 --output-dir ./env_installer",
+    "create_env_installer:linux": "rimraf ./env_installer/ScigetApp*.sh && constructor ./env_installer --platform=linux-64 --output-dir ./env_installer",
+    "create_env_installer:mac": "rimraf ./env_installer/ScigetApp*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
+    "create_env_installer:win": "rimraf ./env_installer/ScigetApp*.exe && constructor ./env_installer --platform=win-64 --output-dir ./env_installer",
     "check_version_match": "node scripts/buildutil.js --check-version-match",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx --cache --fix .",
     "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx --cache .",
@@ -45,7 +45,7 @@
   },
   "build": {
     "appId": "org.neurodesk.neurodeskapp",
-    "productName": "NeurodeskApp",
+    "productName": "ScigetApp",
     "artifactName": "${productName}.${ext}",
     "directories": {
       "buildResources": "dist-resources"
@@ -56,16 +56,17 @@
     "files": [
       "!**/*.d.ts",
       "!**/*.js.map",
-      "!env_installer/NeurodeskApp*.*",
+      "!env_installer/ScigetApp*.*",
       "!tinyrange/**",
       "!media/**"
     ],
     "extraResources": [
-      "env_installer/NeurodeskAppAppServer-*[.sh,.exe]",
+      "env_installer/ScigetAppAppServer-*[.sh,.exe]",
       "build/schemas"
     ],
     "afterSign": "scripts/notarize.js",
     "linux": {
+      "executableName": "scigetapp",
       "target": [
         "deb",
         "rpm"
@@ -74,10 +75,15 @@
       "mimeTypes": [
         "application/x-ipynb+json"
       ],
+      "desktop": {
+        "entry": {
+          "Name": "Sciget App"
+        }
+      },
       "extraResources": [
         {
-          "from": "dist-resources/linux/neurodeskapp.sh",
-          "to": "app/neurodeskapp"
+          "from": "dist-resources/linux/scigetapp.sh",
+          "to": "app/scigetapp"
         },
         {
           "from": "tinyrange",
@@ -86,7 +92,7 @@
       ]
     },
     "deb": {
-      "appArmorProfile": "electron-builder-scripts/neurodeskapp.apparmor",
+      "appArmorProfile": "electron-builder-scripts/scigetapp.apparmor",
       "fpm": [
         "--after-install=build/linux_after_install.sh"
       ]
@@ -97,8 +103,8 @@
       ],
       "extraFiles": [
         {
-          "from": "dist-resources/win/neurodeskapp.cmd",
-          "to": "neurodeskapp.cmd"
+          "from": "dist-resources/win/scigetapp.cmd",
+          "to": "scigetapp.cmd"
         },
         {
           "from": "tinyrange",
@@ -108,7 +114,7 @@
       "icon": "dist-resources/icon.ico"
     },
     "rpm": {
-      "appArmorProfile": "electron-builder-scripts/neurodeskapp.apparmor",
+      "appArmorProfile": "electron-builder-scripts/scigetapp.apparmor",
       "depends": [
         "libXScrnSaver"
       ],
@@ -119,6 +125,8 @@
     "nsis": {
       "oneClick": true,
       "artifactName": "${productName}-Setup.${ext}",
+      "shortcutName": "Sciget App",
+      "uninstallDisplayName": "Sciget App ${version}",
       "perMachine": false,
       "license": "LICENSE",
       "language": "1033",
@@ -128,6 +136,9 @@
     },
     "mac": {
       "category": "public.app-category.productivity",
+      "extendInfo": {
+        "CFBundleDisplayName": "Sciget App"
+      },
       "target": [
         {
           "target": "dmg",
@@ -152,8 +163,8 @@
       "artifactName": "${productName}-${arch}.${ext}",
       "extraResources": [
         {
-          "from": "dist-resources/darwin/neurodeskapp.sh",
-          "to": "app/neurodeskapp"
+          "from": "dist-resources/darwin/scigetapp.sh",
+          "to": "app/scigetapp"
         },
         {
           "from": "tinyrange",
@@ -195,6 +206,7 @@
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
     "@electron/notarize": "^3.1.1",
+    "ajv": "^8.18.0",
     "electron": "^43.3.0",
     "electron-builder": "^26.16.1",
     "eslint": "~8.17.0",

@@ -58,12 +58,8 @@ function copyAssests() {
     path.join(dest, '../app-assets', 'progress-logo.svg')
   );
   fs.copySync(
-    path.join(srcDir, 'assets', 'neurodesk.svg'),
-    path.join(dest, '../app-assets', 'neurodesk.svg')
-  );
-  fs.copySync(
-    path.join(srcDir, 'assets', 'sciget-icon.svg'),
-    path.join(dest, '../app-assets', 'sciget-icon.svg')
+    path.join(srcDir, 'assets', 'sciget.svg'),
+    path.join(dest, '../app-assets', 'sciget.svg')
   );
   fs.copySync(
     'src/main/config/baseContainerConfig.yml',

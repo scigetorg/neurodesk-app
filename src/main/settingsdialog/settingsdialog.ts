@@ -5,10 +5,8 @@ import * as ejs from 'ejs';
 import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import { ThemedWindow } from '../dialog/themedwindow';
-import {
-  getDefaultStorageDirectory,
-  readDefaultStorageMount
-} from '../config/storageMount';
+import { getDefaultStorageDirectory } from '../config/storageMount';
+import { defaultStorageMount } from '../config/catalogInstance';
 import {
   CtrlWBehavior,
   CvmfsMode,
@@ -241,7 +239,7 @@ export class SettingsDialog {
 
             <jp-tab-panel id="tab-panel-server">
               <div class="row" style="line-height: 30px;">
-                <label>Neurodesk storage directory</label>
+                <label>Storage directory</label>
               </div>
               <div class="row">
                 <div style="flex-grow: 1;">
@@ -292,7 +290,7 @@ export class SettingsDialog {
                   <label>Crash and mini app reporting</label>
                 </div>
                 <div class="row">
-                  <jp-checkbox id='checkbox-telemetry' type='checkbox' <%= telemetryConsent === 'on' ? 'checked' : '' %>>Send crash reports and mini app selections to help improve Neurodesk</jp-checkbox>
+                  <jp-checkbox id='checkbox-telemetry' type='checkbox' <%= telemetryConsent === 'on' ? 'checked' : '' %>>Send crash reports and mini app selections to help improve Sciget</jp-checkbox>
                 </div>
                 <div class="row" style="opacity: 0.7; font-size: 12px; margin-top: 4px;">
                   <label>Includes error details, OS info, app logs, and the mini app and local or remote launch choice. Does not include a URL or image tag in app selection events.</label>
@@ -478,7 +476,7 @@ export class SettingsDialog {
       neurodesktopStorageDirectory,
       defaultStoragePlaceholder: getDefaultStorageDirectory(
         process.platform,
-        readDefaultStorageMount(),
+        defaultStorageMount(),
         '~'
       ),
       logLevel,

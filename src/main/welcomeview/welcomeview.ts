@@ -6,80 +6,14 @@ import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
 import { EventTypeRenderer } from '../eventtypes';
-import { ContainerConfig } from '../config/containerConfigParser';
-import * as yaml from 'js-yaml';
+import { getContainerCatalog } from '../config/catalogInstance';
+import { IMiniApp, toInlineScriptJson, toMiniApps } from './miniapps';
 
-interface IMiniApp {
-  id: string;
-  title: string;
-  description: string;
-  defaultVersion?: string;
-  registry?: string;
-  releaseHistoryUrl?: string;
-  remoteUrl?: string[];
-  tags?: string[];
-}
-
-// Function to read container installer YAML files and create mini apps
-function loadMiniAppsFromContainerInstaller(): IMiniApp[] {
-  const containerConfigDir = path.join(__dirname, '../../container_installer');
-  const miniApps: IMiniApp[] = [];
-
-  try {
-    const files = fs.readdirSync(containerConfigDir);
-    const yamlFiles = files.filter(
-      file => file.endsWith('.yml') || file.endsWith('.yaml')
-    );
-
-    for (const yamlFile of yamlFiles) {
-      try {
-        const filePath = path.join(containerConfigDir, yamlFile);
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const config = yaml.load(fileContent) as ContainerConfig;
-
-        if (config && config.title && config.description) {
-          const app: IMiniApp = {
-            id: config.title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-            title: config.title,
-            description: config.description.trim(),
-            remoteUrl: config.remoteUrl || []
-          };
-
-          if (config.defaultVersion) {
-            const version = config.defaultVersion;
-            try {
-              if (
-                version &&
-                typeof version === 'object' &&
-                typeof (version as any).toISOString === 'function'
-              ) {
-                app.defaultVersion = (version as any)
-                  .toISOString()
-                  .split('T')[0];
-              } else {
-                app.defaultVersion = String(version);
-              }
-            } catch {
-              app.defaultVersion = String(version);
-            }
-          }
-          if (config.registry) app.registry = config.registry;
-          if (config.releaseHistoryUrl)
-            app.releaseHistoryUrl = config.releaseHistoryUrl;
-          if (config.remoteUrl) app.remoteUrl = config.remoteUrl;
-          if (config.tags) app.tags = config.tags;
-
-          miniApps.push(app);
-        }
-      } catch (error) {
-        console.error(`Error reading YAML file ${yamlFile}:`, error);
-      }
-    }
-  } catch (error) {
-    console.error('Error reading container installer directory:', error);
-  }
-
-  return miniApps;
+function catalogMiniApps(): IMiniApp[] {
+  const catalog = getContainerCatalog();
+  return toMiniApps(
+    catalog.getIds().map(id => ({ id, entry: catalog.getEntry(id) }))
+  );
 }
 
 export class WelcomeView {
@@ -96,17 +30,14 @@ export class WelcomeView {
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
     );
 
-    const neurodeskLogo = fs.readFileSync(
-      path.join(__dirname, '../../../app-assets/neurodesk.svg')
-    );
-
     const scigetLogo = fs.readFileSync(
-      path.join(__dirname, '../../../app-assets/sciget-icon.svg')
+      path.join(__dirname, '../../../app-assets/sciget.svg')
     );
 
-    // Load mini apps from container installer YAML files
-    const dynamicMiniApps = loadMiniAppsFromContainerInstaller();
-    const miniAppsJson = JSON.stringify(dynamicMiniApps, null, 2);
+    // The catalog as it is now (cache or bundled); load() pushes the
+    // refreshed one when the network fetch completes.
+    this._miniApps = catalogMiniApps();
+    const miniAppsJson = toInlineScriptJson(this._miniApps);
 
     this._pageSource = `
       <!DOCTYPE html>
@@ -177,6 +108,8 @@ export class WelcomeView {
           }
 
           .app-card {
+              display: flex;
+              flex-direction: column;
               background: white;
               border-radius: 4px;
               padding: 24px;
@@ -196,6 +129,33 @@ export class WelcomeView {
 
           .app-ui-dark .app-card:hover {
               box-shadow: 0 20px 40px rgba(66, 66, 66, 0.4);
+          }
+
+          .app-card-header {
+              display: flex;
+              align-items: flex-start;
+              justify-content: space-between;
+              gap: 8px;
+          }
+
+          .fav-btn {
+              background: none;
+              border: none;
+              cursor: pointer;
+              font-size: 1.3rem;
+              line-height: 1;
+              padding: 2px;
+              color: #cbd5e0;
+              transition: color 0.2s ease, transform 0.2s ease;
+              flex-shrink: 0;
+          }
+
+          .fav-btn:hover {
+              transform: scale(1.2);
+          }
+
+          .fav-btn.favorited {
+              color: #d97706;
           }
 
           .app-title {
@@ -230,24 +190,24 @@ export class WelcomeView {
             font-size: 30px;
           }
 
-          .neurodesk-logo svg {
-            width: 300px;
+          .sciget-logo svg {
+            height: 120px;
           }
 
-          .neurodesk-logo {
+          .sciget-logo {
             color: #0c0e0a;
           }
 
-          .app-ui-dark .neurodesk-logo {
+          .app-ui-dark .sciget-logo {
             color: #ffffff;
           }
 
           .announcement-card {
-            border-top: 4px solid #6aa329;
+            border-top: 4px solid #d97706;
           }
 
           .app-ui-dark .announcement-card {
-            border-top-color: #b7d886;
+            border-top-color: #ffd0a3;
           }
 
           .announcement-header {
@@ -255,16 +215,6 @@ export class WelcomeView {
             align-items: center;
             gap: 12px;
             margin-bottom: 16px;
-          }
-
-          .sciget-logo {
-            flex: 0 0 50px;
-          }
-
-          .sciget-logo svg {
-            display: block;
-            width: 50px;
-            height: 50px;
           }
 
           .announcement-heading .app-title {
@@ -288,6 +238,7 @@ export class WelcomeView {
           .launch-buttons {
               display: flex;
               gap: 12px;
+              margin-top: auto;
           }
 
           .launch-btn {
@@ -319,12 +270,12 @@ export class WelcomeView {
             }
 
             .local-btn {
-                background: #6aa329;
+                background: #d97706;
                 color: white;
             }
 
             .local-btn:hover:not(:disabled) {
-                background: #b7d886;
+                background: #ffd0a3;
             }
 
             .launch-btn.loading {
@@ -366,12 +317,12 @@ export class WelcomeView {
                 cursor: pointer;
                 transition: all 0.2s ease;
                 font-size: 0.9rem;
-                background: #b7d886;
+                background: #ffd0a3;
                 color: black;
             }
 
             .split-btn-main:hover {
-                background: #6aa329;
+                background: #d97706;
                 color: white;
             }
 
@@ -383,12 +334,12 @@ export class WelcomeView {
                 font-size: 0.7rem;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                background: #b7d886;
+                background: #ffd0a3;
                 color: black;
             }
 
             .split-btn-arrow:hover {
-                background: #6aa329;
+                background: #d97706;
                 color: white;
             }
 
@@ -639,7 +590,7 @@ export class WelcomeView {
             #survey-reminder-btn {
               display: inline-block;
               padding: 8px 16px;
-              background: #b7d886;
+              background: #ffd0a3;
               color: black;
               font-weight: 600;
               font-size: 0.85rem;
@@ -649,7 +600,7 @@ export class WelcomeView {
               transition: background 0.2s ease;
             }
             #survey-reminder-btn:hover {
-              background: #6aa329;
+              background: #d97706;
             }
           </style>
           <script>
@@ -675,8 +626,8 @@ export class WelcomeView {
           <div class="container">
             <div class="row app-logo-row">
               <div class="app-logo">
-                <div class="neurodesk-logo">
-                    ${neurodeskLogo}
+                <div class="sciget-logo">
+                    ${scigetLogo}
                 </div>
               </div>
             </div>
@@ -720,8 +671,15 @@ export class WelcomeView {
           const notificationPanelMessage = document.getElementById('notification-panel-message');
           const notificationPanelCloseButton = document.getElementById('notification-panel-close');
 
-          // Mini apps data loaded from container installer YAML files
-          const miniApps = ${miniAppsJson};
+          // Container catalog entries; replaced by onSetMiniApps after a refresh.
+          let miniApps = ${miniAppsJson};
+          let favoriteIds = new Set();
+
+          // Load favorites from main process
+          window.electronAPI.getFavorites().then(ids => {
+            favoriteIds = new Set(ids);
+            renderApps(filterApps(searchInput.value));
+          });
 
           // Function to filter apps based on search term
           function filterApps(searchTerm) {
@@ -736,45 +694,60 @@ export class WelcomeView {
             );
           }
 
-          // Function to create app card HTML
+          function el(tag, className, text) {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined) node.textContent = text;
+            return node;
+          }
+
+          // Cards are built with DOM calls, never HTML strings: titles,
+          // descriptions and URLs come from the remotely hosted catalog.
           function createAppCard(app) {
-              const hasReleaseHistory = !!app.releaseHistoryUrl;
-              const localButton = hasReleaseHistory
-                ? \`<div class="split-btn-wrapper">
-                      <button class="split-btn-main"
-                              onclick="launchLatestVersion('\$\{app.id\}')">
-                          Launch Local
-                      </button>
-                      <button class="split-btn-arrow"
-                              onclick="toggleVersionDropdown(event, '\$\{app.id\}')">
-                          &#9660;
-                      </button>
-                      <div class="version-dropdown" id="dropdown-\$\{app.id\}"
-                           data-release-url="\$\{app.releaseHistoryUrl\}"
-                           data-default-version="\$\{app.defaultVersion || ''}\}"
-                           data-app-title="\$\{app.title\}"
-                           data-loaded="false">
-                      </div>
-                  </div>\`
-                : \`<button class="launch-btn local-btn"
-                          onclick="handleNewSessionClick('notebook', '\$\{app.title\}', null, '\$\{app.id\}')">
-                      Launch Local
-                  </button>\`;
+              const card = el('div', 'app-card');
+              // Catalog ID as element id: the E2E selector finds cards by it.
+              card.id = app.id;
 
-              return \`
-                  <div class="app-card" id="\$\{app.id\}">
-                      <h3 class="app-title">\$\{app.title\}</h3>
-                      <p class="app-description">\$\{app.description\}</p>
+              const header = el('div', 'app-card-header');
+              header.append(el('h3', 'app-title', app.title));
 
-                      <div class="launch-buttons">
-                          \$\{localButton\}
-                          <button class="launch-btn remote-btn"
-                                  onclick="handleNewRemoteSessionClick('remote', '\$\{app.remoteUrl\}', '\$\{app.id\}');location.href='javascript:void(0)'">
-                              Launch Remote
-                          </button>
-                      </div>
-                  </div>
-              \`;
+              const favBtn = el('button', 'fav-btn');
+              const isFav = favoriteIds.has(app.id);
+              favBtn.textContent = isFav ? '\\u2605' : '\\u2606';
+              if (isFav) favBtn.classList.add('favorited');
+              favBtn.title = isFav ? 'Remove from favorites' : 'Add to favorites';
+              favBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const updated = await window.electronAPI.toggleFavorite(app.id);
+                favoriteIds = new Set(updated);
+                renderApps(filterApps(searchInput.value));
+              });
+              header.append(favBtn);
+
+              card.append(
+                  header,
+                  el('p', 'app-description', app.description)
+              );
+              const buttons = el('div', 'launch-buttons');
+              buttons.append(createLocalButton(app));
+              if (app.remoteUrl && app.remoteUrl.length > 0) {
+                  const remote = el('button', 'launch-btn remote-btn', 'Launch Remote');
+                  remote.addEventListener('click', () => handleNewRemoteSessionClick(app));
+                  buttons.append(remote);
+              }
+              card.append(buttons);
+              return card;
+          }
+
+          function createLocalButton(app) {
+              const wrapper = el('div', 'split-btn-wrapper');
+              const main = el('button', 'split-btn-main', 'Launch Local');
+              const arrow = el('button', 'split-btn-arrow', '\\u25BC');
+              const dropdown = el('div', 'version-dropdown');
+              main.addEventListener('click', () => launchLatestVersion(app, main));
+              arrow.addEventListener('click', event => toggleVersionDropdown(event, app, dropdown));
+              wrapper.append(main, arrow, dropdown);
+              return wrapper;
           }
 
           // Function to render all apps (updated to handle filtering)
@@ -794,21 +767,15 @@ export class WelcomeView {
                   return;
               }
 
-              const announcementHTML = showAnnouncement
-                ? \`<aside class="app-card announcement-card" aria-labelledby="sciget-announcement-title">
-                     <div class="announcement-header">
-                       <div class="sciget-logo" aria-hidden="true">${scigetLogo}</div>
-                       <div class="announcement-heading">
-                         <span class="announcement-label">Coming next</span>
-                         <h3 class="app-title" id="sciget-announcement-title">SciGet</h3>
-                       </div>
-                     </div>
-                     <p class="app-description">The next version of Neurodesk App will be called SciGet, with a broader selection for scientific domains.</p>
-                   </aside>\`
-                : '';
-              const appsHTML = filteredApps.map(createAppCard).join('') + announcementHTML;
 
-              appsGrid.innerHTML = appsHTML;
+              const sorted = [...filteredApps].sort((a, b) => {
+                const aFav = favoriteIds.has(a.id) ? 0 : 1;
+                const bFav = favoriteIds.has(b.id) ? 0 : 1;
+                return aFav - bFav;
+              });
+              appsGrid.replaceChildren(...sorted.map(createAppCard));
+              // Static markup from the bundled page, not catalog data.
+              appsGrid.insertAdjacentHTML('beforeend', announcementHTML);
           }
 
           // Add search functionality
@@ -817,6 +784,11 @@ export class WelcomeView {
               const searchTerm = e.target.value;
               const filteredApps = filterApps(searchTerm);
               renderApps(filteredApps);
+          });
+
+          window.electronAPI.onSetMiniApps(list => {
+              miniApps = list;
+              renderApps(filterApps(searchInput.value));
           });
 
           // Initialize the app
@@ -841,37 +813,37 @@ export class WelcomeView {
             window.electronAPI.openDroppedFiles(files);
           });
 
-          function handleNewSessionClick(type, containerConfigName, imageVersion, miniAppId) {
-            window.electronAPI.newSession(type, containerConfigName, undefined, imageVersion || undefined, miniAppId);
+          function handleNewSessionClick(app, imageVersion) {
+            window.electronAPI.newSession('notebook', app.id, undefined, imageVersion || undefined, app.telemetryId);
           }
 
-          async function launchLatestVersion(appId) {
-            const dropdown = document.getElementById('dropdown-' + appId);
-            const button = document.getElementById(appId).querySelector('.split-btn-main');
-            const appTitle = dropdown.dataset.appTitle;
-            const defaultVersion = dropdown.dataset.defaultVersion;
+          async function launchLatestVersion(app, button) {
             button.disabled = true;
             button.textContent = 'Checking latest version...';
 
             try {
               const versions = await window.electronAPI.fetchReleases(
-                dropdown.dataset.releaseUrl,
-                defaultVersion
+                app.releaseHistoryUrl,
+                app.defaultVersion
               );
-              handleNewSessionClick('notebook', appTitle, versions[0] || defaultVersion, appId);
+              handleNewSessionClick(app, versions[0] || app.defaultVersion);
             } catch (err) {
               console.error('Failed to load release history:', err);
-              handleNewSessionClick('notebook', appTitle, defaultVersion, appId);
+              handleNewSessionClick(app, app.defaultVersion);
             } finally {
               button.disabled = false;
               button.textContent = 'Launch Local';
             }
           }
 
-          function handleNewRemoteSessionClick(type, remoteUrl, miniAppId) {
-            // Parse the comma-separated string back to array
-            const remoteUrlArray = typeof remoteUrl === 'string' ? remoteUrl.split(',') : remoteUrl;
-            window.electronAPI.newSession(type, undefined, remoteUrlArray, undefined, miniAppId);
+          function handleNewRemoteSessionClick(app) {
+            window.electronAPI.newSession('remote', undefined, app.remoteUrl, undefined, app.telemetryId);
+          }
+
+          function closeDropdowns() {
+            document.querySelectorAll('.version-dropdown.open').forEach(dd => {
+              dd.classList.remove('open');
+            });
           }
 
           // Close any open dropdown when clicking outside
@@ -883,79 +855,62 @@ export class WelcomeView {
             });
           });
 
-          async function toggleVersionDropdown(event, appId) {
+          async function toggleVersionDropdown(event, app, dropdown) {
             event.stopPropagation();
-            const dropdown = document.getElementById('dropdown-' + appId);
-            if (!dropdown) return;
 
-            // Toggle visibility
             if (dropdown.classList.contains('open')) {
               dropdown.classList.remove('open');
               return;
             }
-
-            // Close other open dropdowns
-            document.querySelectorAll('.version-dropdown.open').forEach(dd => {
-              dd.classList.remove('open');
-            });
-
+            closeDropdowns();
             dropdown.classList.add('open');
 
-            // Load versions if not already loaded
-            if (dropdown.dataset.loaded === 'false') {
-              dropdown.innerHTML = '<div class="version-dropdown-loading">Loading versions...</div>';
-
-              const releaseUrl = dropdown.dataset.releaseUrl;
-              const defaultVersion = dropdown.dataset.defaultVersion;
-              const appTitle = dropdown.dataset.appTitle;
-
-              try {
-                const versions = await window.electronAPI.fetchReleases(releaseUrl, defaultVersion);
-                renderDropdownItems(dropdown, versions, appTitle);
-                dropdown.dataset.loaded = 'true';
-              } catch (err) {
-                dropdown.innerHTML = '<div class="version-dropdown-loading">Failed to load versions</div>';
-              }
+            if (dropdown.dataset.loaded === 'true') {
+              return;
+            }
+            dropdown.replaceChildren(el('div', 'version-dropdown-loading', 'Loading versions...'));
+            try {
+              const versions = await window.electronAPI.fetchReleases(
+                app.releaseHistoryUrl,
+                app.defaultVersion
+              );
+              renderDropdownItems(dropdown, versions, app);
+              dropdown.dataset.loaded = 'true';
+            } catch (err) {
+              dropdown.replaceChildren(el('div', 'version-dropdown-loading', 'Failed to load versions'));
             }
           }
 
-          function renderDropdownItems(dropdown, versions, appTitle) {
-            let html = '';
-            versions.forEach((version, i) => {
-              const label = i === 0 ? version + ' (Latest)' : version;
-              const cls = i === 0 ? 'version-dropdown-item latest-tag' : 'version-dropdown-item';
-              html += '<div class="' + cls + '" onclick="selectVersion(\\'' + appTitle + '\\', \\'' + version + '\\')">' + label + '</div>';
+          function renderDropdownItems(dropdown, versions, app) {
+            const items = versions.map((version, i) => {
+              const item = el(
+                'div',
+                i === 0 ? 'version-dropdown-item latest-tag' : 'version-dropdown-item',
+                i === 0 ? version + ' (Latest)' : version
+              );
+              item.addEventListener('click', () => {
+                closeDropdowns();
+                handleNewSessionClick(app, version);
+              });
+              return item;
             });
 
             // Custom tag input
-            html += '<div class="version-dropdown-custom">';
-            html += '<input type="text" placeholder="Custom tag (e.g. pre-release)" '
-                  + 'onkeydown="handleCustomTag(event, \\'' + appTitle + '\\')" />';
-            html += '</div>';
-
-            dropdown.innerHTML = html;
-          }
-
-          function selectVersion(appTitle, version) {
-            // Close all dropdowns
-            document.querySelectorAll('.version-dropdown.open').forEach(dd => {
-              dd.classList.remove('open');
-            });
-            const miniApp = miniApps.find(app => app.title === appTitle);
-            handleNewSessionClick('notebook', appTitle, version, miniApp?.id);
-          }
-
-          function handleCustomTag(event, appTitle) {
-            if (event.key === 'Enter') {
-              const tag = event.target.value.trim();
+            const custom = el('div', 'version-dropdown-custom');
+            const input = el('input');
+            input.type = 'text';
+            input.placeholder = 'Custom tag (e.g. pre-release)';
+            input.addEventListener('keydown', event => {
+              if (event.key !== 'Enter') return;
+              const tag = input.value.trim();
               if (tag) {
-                document.querySelectorAll('.version-dropdown.open').forEach(dd => {
-                  dd.classList.remove('open');
-                });
-                const miniApp = miniApps.find(app => app.title === appTitle);
-                handleNewSessionClick('notebook', appTitle, tag, miniApp?.id);
+                closeDropdowns();
+                handleNewSessionClick(app, tag);
               }
-            }
+            });
+            custom.append(input);
+
+            dropdown.replaceChildren(...items, custom);
           }
 
           function sendMessageToMain(message, ...args) {
@@ -1013,6 +968,22 @@ export class WelcomeView {
         resolve();
       });
     });
+
+    // Show the refreshed catalog once the fetch (shared with any other
+    // caller) finishes, if it changed what the page was built with.
+    void getContainerCatalog()
+      .refresh()
+      .then(() => this._viewReady)
+      .then(() => {
+        const miniApps = catalogMiniApps();
+        if (JSON.stringify(miniApps) === JSON.stringify(this._miniApps)) {
+          return;
+        }
+        this._miniApps = miniApps;
+        if (!this._view.webContents.isDestroyed()) {
+          this._view.webContents.send(EventTypeRenderer.SetMiniApps, miniApps);
+        }
+      });
   }
 
   showNotification(message: string, closable: boolean) {
@@ -1029,6 +1000,7 @@ export class WelcomeView {
   private _view: WebContentsView;
   private _viewReady: Promise<void>;
   private _pageSource: string;
+  private _miniApps: IMiniApp[];
 }
 
 export namespace WelcomeView {

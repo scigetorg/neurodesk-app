@@ -52,7 +52,9 @@ export enum EventTypeMain {
   GetChildProcressLog = 'get-child-process-log',
   SetAuthDialogResponse = 'set-auth-dialog-response',
   SetTelemetryConsent = 'set-telemetry-consent',
-  FetchReleases = 'fetch-releases'
+  FetchReleases = 'fetch-releases',
+  GetFavorites = 'get-favorites',
+  ToggleFavorite = 'toggle-favorite'
 }
 
 // events sent to Renderer process
@@ -69,6 +71,7 @@ export enum EventTypeRenderer {
   ShowServerStatus = 'show-server-status',
   SetNewsList = 'set-news-list',
   SetNotificationMessage = 'set-notification-message',
+  SetMiniApps = 'set-mini-apps',
   DisableLocalServerActions = 'disable-local-server-actions',
   SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result'
 }

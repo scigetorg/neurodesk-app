@@ -5,7 +5,12 @@ jest.mock('child_process', () => ({
 
 import { execSync } from 'child_process';
 import { EngineType } from '../config/settings';
-import { resolveContainerName } from '../server';
+import {
+  detectSharedHost,
+  getUserScopedContainerName,
+  LEGACY_MAC_ADDRESS,
+  resolveContainerName
+} from '../server';
 
 const execSyncMock = execSync as jest.Mock;
 
@@ -27,30 +32,30 @@ describe('resolveContainerName', () => {
     execSyncMock.mockReset();
   });
 
-  it('returns the name it was given for every engine', () => {
+  it('uses the host user ID as a stable suffix for every engine', () => {
     for (const engineType of [
       EngineType.Docker,
       EngineType.Podman,
       EngineType.TinyRange
     ]) {
-      expect(resolveContainerName(engineType, 'neurodeskapp')).toBe(
-        'neurodeskapp'
+      expect(resolveContainerName(engineType, 'neurodeskapp', 4444444)).toBe(
+        'neurodeskapp-4444444'
       );
     }
   });
 
   it('does not shell out for TinyRange (no container to remove)', () => {
-    resolveContainerName(EngineType.TinyRange, 'neurodeskapp');
+    resolveContainerName(EngineType.TinyRange, 'neurodeskapp', 4444444);
     expect(execSyncMock).not.toHaveBeenCalled();
   });
 
   it('removes a stale container before reusing the name (Docker)', () => {
     withPlatform('linux', () => {
-      resolveContainerName(EngineType.Docker, 'neurodeskapp');
+      resolveContainerName(EngineType.Docker, 'neurodeskapp', 4444444);
     });
     expect(execSyncMock).toHaveBeenCalledTimes(1);
     expect(execSyncMock.mock.calls[0][0]).toContain(
-      'docker rm -f neurodeskapp'
+      'docker rm -f neurodeskapp-4444444'
     );
   });
 
@@ -85,12 +90,57 @@ describe('resolveContainerName', () => {
 
   it('still returns the name when the removal throws (no such container)', () => {
     execSyncMock.mockImplementation(() => {
-      throw new Error('No such container: neurodeskapp');
+      throw new Error('No such container: neurodeskapp-4444444');
     });
     withPlatform('linux', () => {
-      expect(resolveContainerName(EngineType.Docker, 'neurodeskapp')).toBe(
-        'neurodeskapp'
-      );
+      expect(
+        resolveContainerName(EngineType.Docker, 'neurodeskapp', 4444444)
+      ).toBe('neurodeskapp-4444444');
     });
+  });
+
+  it('uses the current Unix UID by default', () => {
+    if (process.getuid) {
+      expect(getUserScopedContainerName('neurodeskapp')).toBe(
+        `neurodeskapp-${process.getuid()}`
+      );
+    }
+  });
+
+  it('sanitizes account names used when a numeric UID is unavailable', () => {
+    expect(getUserScopedContainerName('neurodeskapp', 'Jane Doe')).toBe(
+      'neurodeskapp-Jane-Doe'
+    );
+  });
+});
+
+describe('detectSharedHost', () => {
+  beforeEach(() => {
+    execSyncMock.mockReset();
+  });
+
+  it('never probes for TinyRange', () => {
+    expect(detectSharedHost(EngineType.TinyRange, 'neurodeskapp-1000')).toBe(
+      false
+    );
+    expect(execSyncMock).not.toHaveBeenCalled();
+  });
+
+  it('falls back to single-user when the probe fails or times out', () => {
+    execSyncMock.mockImplementation(() => {
+      throw new Error('ETIMEDOUT');
+    });
+    expect(
+      detectSharedHost(EngineType.Docker, 'neurodeskapp-1000', 'linux')
+    ).toBe(false);
+  });
+
+  it('runs one probe with a 5s timeout and reports another user', () => {
+    execSyncMock.mockReturnValue(`/neurodeskapp-2000 ${LEGACY_MAC_ADDRESS}\n`);
+    expect(
+      detectSharedHost(EngineType.Docker, 'neurodeskapp-1000', 'linux')
+    ).toBe(true);
+    expect(execSyncMock).toHaveBeenCalledTimes(1);
+    expect(execSyncMock.mock.calls[0][1]).toMatchObject({ timeout: 5000 });
   });
 });

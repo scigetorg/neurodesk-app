@@ -8,10 +8,12 @@ type SetNotificationMessageListener = (
   closable: boolean
 ) => void;
 type DisableLocalServerActionsListener = () => void;
+type SetMiniAppsListener = (list: any[]) => void;
 
 let onSetNewsListListener: SetNewsListListener;
 let onSetNotificationMessageListener: SetNotificationMessageListener;
 let onDisableLocalServerActionsListener: DisableLocalServerActionsListener;
+let onSetMiniAppsListener: SetMiniAppsListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -73,6 +75,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openNewsLink: (newsLink: string) => {
     ipcRenderer.send(EventTypeMain.OpenNewsLink, newsLink);
   },
+  getFavorites: (): Promise<string[]> => {
+    return ipcRenderer.invoke(EventTypeMain.GetFavorites);
+  },
+  toggleFavorite: (id: string): Promise<string[]> => {
+    return ipcRenderer.invoke(EventTypeMain.ToggleFavorite, id);
+  },
   sendMessageToMain: (message: string, ...args: any[]) => {
     ipcRenderer.send(message, ...args);
   },
@@ -81,6 +89,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onSetNotificationMessage: (callback: SetNotificationMessageListener) => {
     onSetNotificationMessageListener = callback;
+  },
+  onSetMiniApps: (callback: SetMiniAppsListener) => {
+    onSetMiniAppsListener = callback;
   },
   onDisableLocalServerActions: (
     callback: DisableLocalServerActionsListener
@@ -103,6 +114,12 @@ ipcRenderer.on(
     }
   }
 );
+
+ipcRenderer.on(EventTypeRenderer.SetMiniApps, (event, list) => {
+  if (onSetMiniAppsListener) {
+    onSetMiniAppsListener(list);
+  }
+});
 
 ipcRenderer.on(EventTypeRenderer.DisableLocalServerActions, event => {
   if (onDisableLocalServerActionsListener) {

@@ -1,5 +1,23 @@
 # Release Instructions
 
+## Sciget name transition
+
+The app was renamed from `NeurodeskApp` to `ScigetApp` in version 2.2.0.
+The `neurodeskapp` package name (`name` in package.json) and
+`org.neurodesk.neurodeskapp` app ID are kept unchanged so that
+`electron-updater` recognises the new release as an update for existing
+installations. Keep signing with the existing Apple identity.
+
+The Windows NSIS installer cleans up the old `C:\NeurodeskApp` directory.
+The Linux post-install script creates a backward-compatible `neurodeskapp`
+symlink. The macOS CLI setup creates a `neurodeskapp` alias alongside the
+primary `scigetapp` command.
+
+Before publishing, confirm that the signed Windows installer updates an existing
+installation, that the macOS ZIP updater replaces the existing app, and that the
+Linux package upgrades in place. The CI build and unit tests check the source-side
+compatibility contract but cannot substitute for these installer checks.
+
 ## Dependencies
 
 JupyterLab Desktop uses [tbump](https://github.com/dmerejkowsky/tbump) to bump JupyterLab and the application versions. You can install using:

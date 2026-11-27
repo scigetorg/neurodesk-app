@@ -1,7 +1,7 @@
-import { request as httpsRequest } from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
 import log from 'electron-log';
+import { fetchText } from '../net/fetchText';
 import { getUserDataDir } from '../utils';
 
 // Release Fetch Data Flow:
@@ -113,42 +113,6 @@ function writeDiskCache(url: string, cached: ICachedReleases): void {
   }
 }
 
-function fetchRawMarkdown(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const req = httpsRequest(url, { timeout: FETCH_TIMEOUT_MS }, res => {
-      // Handle redirects (raw.githubusercontent.com may 302)
-      if (
-        res.statusCode &&
-        res.statusCode >= 300 &&
-        res.statusCode < 400 &&
-        res.headers.location
-      ) {
-        fetchRawMarkdown(res.headers.location).then(resolve, reject);
-        return;
-      }
-
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode} fetching ${url}`));
-        return;
-      }
-
-      let body = '';
-      res.on('data', chunk => {
-        body += chunk;
-      });
-      res.on('end', () => resolve(body));
-      res.on('error', reject);
-    });
-
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error(`Timeout fetching ${url}`));
-    });
-    req.end();
-  });
-}
-
 /**
  * Fetch available release versions for a given release history URL.
  * Uses in-memory cache -> disk cache -> network fetch -> fallback chain.
@@ -178,7 +142,9 @@ export async function fetchReleases(
 
   // 3. Fetch from network
   try {
-    const markdown = await fetchRawMarkdown(releaseHistoryUrl);
+    const markdown = await fetchText(releaseHistoryUrl, {
+      timeoutMs: FETCH_TIMEOUT_MS
+    });
     const versions = parseReleaseVersions(markdown);
 
     if (versions.length > 0) {

@@ -8,7 +8,7 @@ import * as path from 'path';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { IDisposable } from './tokens';
-import { getFreePort, getUserDataDir, waitForDuration } from './utils';
+import { getFreePort, getUserDataDir } from './utils';
 
 export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
 import {
@@ -19,7 +19,7 @@ import {
   userSettings,
   WorkspaceSettings
 } from './config/settings';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { ProgressView } from './progressview/progressview';
 import {
   ContainerConfigParser,
@@ -27,6 +27,7 @@ import {
   VariableContext
 } from './config/containerConfigParser';
 import { getDefaultStorageDirectory } from './config/storageMount';
+import { requireContainerEntry } from './config/catalogInstance';
 
 export { getDefaultStorageDirectory } from './config/storageMount';
 
@@ -52,7 +53,7 @@ function createTempFile(
   data = '',
   encoding: BufferEncoding = 'utf8'
 ) {
-  const tempDirPath = path.join(os.tmpdir(), 'neurodesk_app');
+  const tempDirPath = path.join(os.tmpdir(), 'sciget_app');
   const tmpDir = fs.mkdtempSync(tempDirPath);
   const tmpFilePath = path.join(tmpDir, fileName);
 
@@ -106,6 +107,15 @@ export interface ILaunchScriptParams {
   /** Host OS version (Ubuntu YYMM); empty when unknown. */
   osVersion: string;
   tinyrangePath: string;
+  /** Name already scoped to the host user, when resolved by createLaunchScript. */
+  containerName?: string;
+  /**
+   * Several host users share this container engine. Switches the container
+   * from the legacy fixed MAC (and Podman IP) to a per-user MAC.
+   */
+  sharedHost?: boolean;
+  /** Explicit container MAC address; overrides the sharedHost default. */
+  macAddress?: string;
   /** Host directory mounted at the configured storage mount. */
   storageDirectory?: string;
   /** Host directory mounted at /data, if the user configured one. */
@@ -115,13 +125,146 @@ export interface ILaunchScriptParams {
 }
 
 /**
- * Resolve container name and remove any existing container with that name.
+ * The host user's identity, shared by everything scoped to one user (container
+ * name and MAC address) so they always agree:
+ * the numeric UID on Unix, the account name on Windows.
  */
+export function currentUserId(): string | number {
+  return process.getuid?.() ?? os.userInfo().username;
+}
+
+/** User ID made safe for Docker object names. */
+export function userSuffix(userId: string | number): string {
+  return String(userId).replace(/[^a-zA-Z0-9_.-]/g, '-');
+}
+
+/** Keep a stable container name for each host user across app restarts. */
+export function getUserScopedContainerName(
+  name: string,
+  userId: string | number = currentUserId()
+): string {
+  return `${name}-${userSuffix(userId)}`;
+}
+
+/**
+ * MAC address every container used before shared-host support. It is pinned
+ * so MATLAB, which binds its activation to the MAC, does not ask to be
+ * reactivated each time the container is re-created (see the Neurodesk FAQ).
+ * Single-user hosts keep it so existing activations stay valid.
+ */
+export const LEGACY_MAC_ADDRESS = '88:75:56:ef:3e:d6';
+
+/** Static Podman bridge IP used alongside the legacy MAC on single-user hosts. */
+export const LEGACY_PODMAN_IP = '10.88.0.10';
+
+const MAC_PREFIX = '88:75:56';
+const LEGACY_MAC_SUFFIX = 0xef3ed6;
+
+/**
+ * Stable, per-user container MAC address, used only on shared hosts.
+ *
+ * The MAC stays fixed across restarts (MATLAB activation keeps working), but
+ * differs between host users: containers sharing a MAC on the same bridge
+ * confuse the bridge's forwarding table, so a second user's container becomes
+ * unreachable through its published port and the app hangs at startup.
+ *
+ * The last three bytes are the low 24 bits of a numeric UID (no collisions
+ * between UIDs less than 2^24 apart, which covers local and most directory
+ * UIDs), or the first three bytes of a SHA-256 of a Windows account name.
+ * The one value that would reproduce the legacy MAC is bumped by one, so a
+ * shared-host container can never collide with a single-user one.
+ */
+export function getUserScopedMacAddress(
+  userId: string | number = currentUserId()
+): string {
+  const id = String(userId);
+  let suffix = /^\d+$/.test(id)
+    ? Number(id) & 0xffffff
+    : createHash('sha256').update(id).digest().readUIntBE(0, 3);
+  if (suffix === LEGACY_MAC_SUFFIX) {
+    suffix = (suffix + 1) & 0xffffff;
+  }
+  const hex = suffix.toString(16).padStart(6, '0');
+  return `${MAC_PREFIX}:${hex.slice(0, 2)}:${hex.slice(2, 4)}:${hex.slice(4)}`;
+}
+
+/**
+ * One shell command that prints one line per running container:
+ * `<name> <mac> [<mac>...]` (one MAC per attached network).
+ */
+export function buildSharedHostProbeCommand(
+  engineType: EngineType,
+  platform: string = process.platform
+): string {
+  const inspectFormat =
+    '{{.Name}}{{range .NetworkSettings.Networks}} {{.MacAddress}}{{end}}';
+  if (platform === 'win32') {
+    return `for /f %i in ('${engineType} ps -q') do @${engineType} inspect -f "${inspectFormat}" %i`;
+  }
+  return (
+    `ids=$(${engineType} ps -q); ` +
+    `[ -z "$ids" ] || ${engineType} inspect -f '${inspectFormat}' $ids`
+  );
+}
+
+/**
+ * True when a running container other than this user's own already uses the
+ * legacy MAC, i.e. another host user's Neurodesk container (from this or an
+ * older app version) is up on the same engine. Starting a second container
+ * with the same MAC would make one of them unreachable.
+ */
+export function parseSharedHostProbe(
+  output: string,
+  ownContainerName: string
+): boolean {
+  return output
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .some(line => {
+      const [rawName, ...macs] = line.split(/\s+/);
+      const name = rawName.replace(/^\//, '');
+      return (
+        name !== ownContainerName &&
+        macs.some(mac => mac.toLowerCase() === LEGACY_MAC_ADDRESS)
+      );
+    });
+}
+
+/**
+ * Detect whether another host user's container already holds the legacy MAC.
+ * Rootless Docker/Podman give each user their own daemon and network, so
+ * other users' containers are invisible there and cannot collide anyway.
+ * Any failure or timeout falls back to single-user, which keeps the
+ * pre-existing launch flags.
+ */
+export function detectSharedHost(
+  engineType: EngineType,
+  ownContainerName: string,
+  platform: string = process.platform
+): boolean {
+  if (engineType === EngineType.TinyRange) {
+    return false;
+  }
+  try {
+    const output = execSync(buildSharedHostProbeCommand(engineType, platform), {
+      encoding: 'utf-8',
+      timeout: 5000
+    });
+    return parseSharedHostProbe(output, ownContainerName);
+  } catch (error) {
+    log.warn(`Shared-host detection failed, assuming single user: ${error}`);
+    return false;
+  }
+}
+
+/** Resolve the user-scoped name and remove any existing container with it. */
 export function resolveContainerName(
   engineType: EngineType,
-  name: string
+  name: string,
+  userId?: string | number
 ): string {
-  const containerName = name;
+  const containerName = getUserScopedContainerName(name, userId);
   const isTinyRange = engineType === EngineType.TinyRange;
   if (isTinyRange) {
     return containerName;
@@ -166,6 +309,9 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
     cvmfsMode,
     osVersion,
     tinyrangePath,
+    containerName: resolvedContainerName,
+    sharedHost = false,
+    macAddress: requestedMacAddress,
     storageDirectory,
     additionalDirectory = '',
     isNfsAdditionalDirectory = false,
@@ -180,11 +326,12 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
   const strPort = port.toString();
 
   const imageName = parser.getImageName();
-  const volumeMount = parser.getVolumeMount();
   const storageMount = parser.getDefaultStorageMount();
-  // The same name the config puts in --name, so the lifecycle commands below
-  // can never address a different container than the one being launched.
-  const containerName = parser.getContainerName();
+  // Use the same name in --name and every lifecycle command.
+  const containerName =
+    resolvedContainerName ||
+    getUserScopedContainerName(parser.getContainerName());
+  const volumeMount = parser.getVolumeMount();
 
   // Keep path separators forward-slashed so the generated script is identical
   // no matter which OS generates it (the Windows tests run on Linux).
@@ -202,16 +349,30 @@ export function generateLaunchScript(params: ILaunchScriptParams): string {
   // Jupyter port; TinyRange forwards the host port and serves on it directly.
   const serverPort = isTinyRange ? strPort : parser.getContainerPort();
 
+  // Single-user hosts keep the legacy fixed MAC/IP so existing MATLAB
+  // activations survive the upgrade. Shared hosts need a distinct MAC per user
+  // and must let Podman assign the IP, or the second user's container is
+  // unreachable (Docker) or fails to start (Podman).
+  const macAddress =
+    requestedMacAddress ||
+    (sharedHost ? getUserScopedMacAddress() : LEGACY_MAC_ADDRESS);
+  const podmanNetworkOpts = sharedHost
+    ? `mac=${macAddress}`
+    : `ip=${LEGACY_PODMAN_IP},mac=${macAddress}`;
+
   const context: VariableContext = {
     port: strPort,
     serverPort,
     token,
     cvmfsDisable: cvmfsMode,
     tinyrangePath,
+    containerName,
     buildDir,
     storageDir,
     additionalDir,
-    volumeMount
+    volumeMount,
+    macAddress,
+    podmanNetworkOpts
   };
 
   const launchCmd = parser
@@ -463,18 +624,13 @@ function createLaunchScript(
     __dirname,
     'config/baseContainerConfig.yml'
   );
-  const containerConfigPath = path.join(
-    __dirname,
-    '../container_installer',
-    containerConfigName + '.yml'
-  );
   log.debug(
-    `baseContainerConfigPath: ${baseContainerConfigPath}, containerConfigName: ${containerConfigPath}`
+    `baseContainerConfigPath: ${baseContainerConfigPath}, containerConfigName: ${containerConfigName}`
   );
 
   const parser = new ContainerConfigParser(
     baseContainerConfigPath,
-    containerConfigPath,
+    requireContainerEntry(containerConfigName),
     imageVersion
   );
 
@@ -530,6 +686,16 @@ function createLaunchScript(
     engineType,
     parser.getContainerName()
   );
+  // Runs after resolveContainerName removed this user's own previous
+  // container, which may still carry the legacy MAC.
+  const sharedHost = detectSharedHost(engineType, containerName);
+  log.info(
+    `Shared-host detection: ${
+      sharedHost
+        ? "another user's container holds the legacy MAC, using per-user MAC address"
+        : 'no other user running, using legacy MAC address'
+    }`
+  );
 
   log.info(
     `Server launch: port=${port} engine=${engineType} container=${containerName} image=${parser.getImageName()}`
@@ -547,6 +713,8 @@ function createLaunchScript(
     cvmfsMode: serverInfo.cvmfsMode.toString(),
     osVersion: getHostOsVersion(),
     tinyrangePath: resolveTinyrangePath(isWin),
+    containerName,
+    sharedHost,
     storageDirectory,
     additionalDirectory,
     isNfsAdditionalDirectory,
@@ -753,7 +921,7 @@ export class JupyterServer {
               this._serverStartFailed();
               reject(
                 new Error(
-                  'Failed to launch Neurodesk from Promise ' +
+                  'Failed to launch container from Promise ' +
                     this._info.port +
                     stderrChunks +
                     stdoutChunks
@@ -773,6 +941,7 @@ export class JupyterServer {
           if (this._progressView) {
             this._progressView.setChildProcessLog(data);
           }
+          this._updatePullProgress(data);
           // When container starts, extend deadline for Jupyter startup
           if (data.includes('[neurodesk-app] Container started:')) {
             const newDeadline = Date.now() + JUPYTER_STARTUP_TIMEOUT;
@@ -800,6 +969,7 @@ export class JupyterServer {
             } else {
               log.debug('no progress view');
             }
+            this._updatePullProgress(data);
             if (
               this._info.engine === EngineType.TinyRange &&
               !started &&
@@ -816,7 +986,7 @@ export class JupyterServer {
         this._nbServer.on('error', (err: Error) => {
           if (started) {
             dialog.showMessageBox({
-              message: `Neurodesk process errored: ${err.message}`,
+              message: `Container process errored: ${err.message}`,
               type: 'error'
             });
           } else {
@@ -874,7 +1044,7 @@ export class JupyterServer {
             }
           } else {
             this._serverStartFailed();
-            reject(new Error('Neurodesk process terminated' + stderrChunks));
+            reject(new Error('Container process terminated' + stderrChunks));
           }
         });
       }
@@ -897,12 +1067,26 @@ export class JupyterServer {
 
     this._stopServer = new Promise<void>((resolve, reject) => {
       if (this._nbServer !== undefined) {
+        const removeContainer = (shell: string) => {
+          // Removing the container also stops Jupyter. An HTTP shutdown request
+          // here races with rm -f and can fail with "socket hang up".
+          execFile(
+            `${this._info.engine} rm -f ${this._info.containerName}`,
+            { shell, timeout: 10000 },
+            (error, _stdout, stderr) => {
+              if (
+                error &&
+                !/no such container|no container with name or ID/i.test(stderr)
+              ) {
+                reject(error);
+              } else {
+                resolve();
+              }
+            }
+          );
+        };
         if (process.platform === 'win32') {
-          if (this._info.engine !== EngineType.TinyRange) {
-            execFile(`${this._info.engine} rm -f ${this._info.containerName}`, {
-              shell: 'cmd.exe'
-            });
-          } else {
+          if (this._info.engine === EngineType.TinyRange) {
             execFile('taskkill', ['/IM', 'tinyrange.exe', '/T', '/F'], {
               shell: 'cmd.exe'
             });
@@ -922,15 +1106,9 @@ export class JupyterServer {
             }
           );
           if (this._info.engine === EngineType.TinyRange) {
-            this._stopping = false;
             resolve();
           } else {
-            this._shutdownServer()
-              .then(() => {
-                this._stopping = false;
-                resolve();
-              })
-              .catch(reject);
+            removeContainer('cmd.exe');
           }
         } else {
           if (this._info.engine === EngineType.TinyRange) {
@@ -939,26 +1117,15 @@ export class JupyterServer {
               `killall tinyrange 2>/dev/null; killall tinyrange_qemu 2>/dev/null; killall qemu-system-x86_64 2>/dev/null; killall qemu-system-aarch64 2>/dev/null`,
               { shell: '/bin/bash' }
             );
-          } else {
-            execFile(`${this._info.engine} rm -f ${this._info.containerName}`, {
-              shell: '/bin/bash'
-            });
           }
           this._nbServer.kill();
           if (this._info.engine === EngineType.TinyRange) {
-            this._stopping = false;
             resolve();
           } else {
-            this._shutdownServer()
-              .then(() => {
-                this._stopping = false;
-                resolve();
-              })
-              .catch(reject);
+            removeContainer('/bin/bash');
           }
         }
       } else {
-        this._stopping = false;
         resolve();
       }
     });
@@ -1015,69 +1182,6 @@ export class JupyterServer {
     this._nbServer.stdout?.removeAllListeners();
   }
 
-  private _callShutdownAPI(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      const req = httpRequest(
-        `${this._info.url.origin}/api/shutdown?_xsrf=${this._info.token}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `token ${this._info.token}`
-          }
-        },
-        r => {
-          if (r.statusCode == 200) {
-            resolve();
-          } else {
-            reject(`Server failed to shutdown. Response code: ${r.statusCode}`);
-          }
-        }
-      );
-      req.on('error', err => {
-        reject(err);
-      });
-      req.end();
-    });
-  }
-
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore kept as dead code for potential future reuse
-  private _shutdownServer(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      this._callShutdownAPI()
-        .then(() => {
-          resolve();
-        })
-        .catch(error => {
-          // if no connection, it is possible that server was not up yet
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          if (error.code === 'ECONNREFUSED') {
-            log.info(
-              'Server not up yet, waiting for it to start...',
-              error.code
-            );
-            Promise.race([
-              waitUntilServerIsUp(this._info.url),
-              waitForDuration(SERVER_LAUNCH_TIMEOUT)
-            ]).then((up: boolean) => {
-              if (up) {
-                this._callShutdownAPI()
-                  .then(() => {
-                    resolve();
-                  })
-                  .catch(reject);
-              } else {
-                reject();
-              }
-            });
-          } else {
-            reject(error);
-          }
-        });
-    });
-  }
-
   private _generateToken() {
     return SERVER_TOKEN_PREFIX + randomBytes(19).toString('hex');
   }
@@ -1106,6 +1210,89 @@ export class JupyterServer {
   private _stopping: boolean = false;
   private _restartCount: number = 0;
   private _progressView: ProgressView;
+  private _pullLayers: Map<string, boolean> = new Map();
+  private _isPulling: boolean = false;
+
+  /**
+   * Parse Docker pull output to track layer progress.
+   * Only works with Docker engine (non-TTY output gives per-layer status):
+   *   "a2318d6c47ec: Pulling fs layer"
+   *   "a2318d6c47ec: Pull complete" / "Already exists"
+   *
+   * Podman non-TTY does not emit per-layer completion lines, so pull
+   * progress tracking is skipped for Podman.
+   */
+  private _updatePullProgress(data: string) {
+    if (!this._progressView || this._info.engine !== EngineType.Docker) {
+      return;
+    }
+
+    // Detect pull start
+    if (
+      data.includes('Pulling from') ||
+      data.includes('Image does not exist')
+    ) {
+      this._isPulling = true;
+      this._pullLayers.clear();
+    }
+
+    if (!this._isPulling) {
+      return;
+    }
+
+    // Docker non-TTY format: "<12-char-hash>: <status>"
+    const dockerLayers = data.matchAll(/([a-f0-9]{12}):\s+([\w ]+)/g);
+    for (const match of dockerLayers) {
+      const layerId = match[1];
+      const status = match[2].trim();
+      if (
+        status === 'Pull complete' ||
+        status === 'Already exists' ||
+        status === 'Download complete'
+      ) {
+        this._pullLayers.set(layerId, true);
+      } else if (
+        status === 'Pulling fs layer' ||
+        status === 'Waiting' ||
+        status === 'Downloading' ||
+        status === 'Extracting' ||
+        status === 'Verifying Checksum'
+      ) {
+        if (!this._pullLayers.has(layerId)) {
+          this._pullLayers.set(layerId, false);
+        }
+      }
+    }
+
+    // Digest line means pull is complete
+    if (data.includes('Digest:') || data.includes('Status:')) {
+      this._isPulling = false;
+      this._pullLayers.forEach((_, key) => this._pullLayers.set(key, true));
+    }
+
+    if (this._pullLayers.size > 0) {
+      const total = this._pullLayers.size;
+      let completed = 0;
+      this._pullLayers.forEach(done => {
+        if (done) completed++;
+      });
+      const percent = Math.round((completed / total) * 100);
+
+      if (completed === total && !this._isPulling) {
+        this._progressView.setProgress(
+          'Starting container',
+          '<div class="message-row">Image download complete. Starting up...</div>',
+          true
+        );
+      } else {
+        this._progressView.setProgress(
+          `Downloading image — ${percent}%`,
+          `<div class="message-row">Pulled ${completed} of ${total} layers</div>`,
+          true
+        );
+      }
+    }
+  }
 }
 
 export namespace JupyterServer {

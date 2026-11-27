@@ -27,6 +27,8 @@ function makeContext(
     storageDir: '~/neurodesktop-storage',
     additionalDir: '',
     volumeMount: 'neurodesk-home',
+    macAddress: '88:75:56:ef:3e:d6',
+    podmanNetworkOpts: 'ip=10.88.0.10,mac=88:75:56:ef:3e:d6',
     ...overrides
   };
 }
@@ -160,7 +162,7 @@ describe('ContainerConfigParser', () => {
       expect(imageIdx).toBeGreaterThan(-1);
       const flagsBefore = args.slice(0, imageIdx).join(' ');
       const after = args.slice(imageIdx + 1).join(' ');
-      expect(flagsBefore).toContain('--security-opt apparmor=neurodeskapp');
+      expect(flagsBefore).toContain('--security-opt apparmor=scigetapp');
       expect(flagsBefore).toContain('--volume "/mnt/scratch":/data');
       // Only the container command may follow the image.
       expect(after.startsWith('start.sh jupyter lab')).toBe(true);
@@ -529,7 +531,7 @@ describe('ContainerConfigParser', () => {
     it('adds the apparmor profile for Docker on Ubuntu >= 23.10', () => {
       expect(
         parser.getConditionalRunArgs(EngineType.Docker, 'unix', '2404')
-      ).toContain('--security-opt apparmor=neurodeskapp');
+      ).toContain('--security-opt apparmor=scigetapp');
     });
 
     it('omits it below the version floor', () => {
@@ -655,6 +657,60 @@ describe('ContainerConfigParser', () => {
       );
       p.setImageVersion(undefined);
       expect(p.getImageVersion()).toBe(p.getDefaultImageVersion());
+    });
+  });
+
+  // ── Catalog entries and tag checks ──
+
+  describe('catalog entry input', () => {
+    const entry = {
+      title: 'microscopy',
+      description: 'Microscopy tools.',
+      registry: 'docker.io/example/micro',
+      defaultVersion: '2026-01-02',
+      containerName: 'microapp',
+      volumeMount: 'micro-home',
+      defaultStorageMount: 'micro-storage'
+    };
+
+    it('launches the entry it is given, without reading a yml file', () => {
+      const p = new ContainerConfigParser(baseConfigPath, entry);
+      expect(p.getImageName()).toBe('docker.io/example/micro:2026-01-02');
+      expect(p.getDefaultStorageMount()).toBe('micro-storage');
+    });
+
+    it('does not modify the entry', () => {
+      const copy = { ...entry };
+      new ContainerConfigParser(baseConfigPath, copy, '2027-01-01');
+      expect(copy).toEqual(entry);
+    });
+
+    it.each(['latest;rm -rf ~', '$(id)', 'a b', '-flag', 'x'.repeat(129)])(
+      'rejects the image tag %p, which reaches a shell command',
+      tag => {
+        expect(
+          () => new ContainerConfigParser(baseConfigPath, entry, tag)
+        ).toThrow(/Invalid image tag/);
+        const p = new ContainerConfigParser(baseConfigPath, entry);
+        expect(() => p.setImageVersion(tag)).toThrow(/Invalid image tag/);
+        expect(p.getImageVersion()).toBe('2026-01-02');
+      }
+    );
+
+    it('reads an unquoted date in a yml file as the tag string', () => {
+      const fs = require('fs');
+      const os = require('os');
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'parser-'));
+      const file = path.join(dir, 'dated.yml');
+      fs.writeFileSync(
+        file,
+        Object.entries({ ...entry, defaultVersion: '' })
+          .map(([k, v]) => `${k}: ${v || '2026-03-04'}`)
+          .join('\n')
+      );
+      expect(
+        new ContainerConfigParser(baseConfigPath, file).getImageName()
+      ).toBe('docker.io/example/micro:2026-03-04');
     });
   });
 });

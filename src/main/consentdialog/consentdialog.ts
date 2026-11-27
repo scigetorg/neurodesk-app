@@ -7,7 +7,7 @@ export class ConsentDialog {
   constructor(options: ConsentDialog.IOptions) {
     this._window = new ThemedWindow({
       isDarkTheme: options.isDarkTheme,
-      title: 'Help Improve Neurodesk',
+      title: 'Help Improve Sciget',
       width: 500,
       height: 340,
       resizable: false,
@@ -68,7 +68,7 @@ export class ConsentDialog {
       <div class="consent-container">
         <div class="consent-header">
           <div>${logoSrc}</div>
-          <div class="consent-title">Help improve Neurodesk App</div>
+          <div class="consent-title">Help improve Sciget App</div>
         </div>
         <div class="consent-body">
           <p>Would you like to send crash reports and anonymous session usage information? This helps us fix bugs and understand which apps are used.</p>
