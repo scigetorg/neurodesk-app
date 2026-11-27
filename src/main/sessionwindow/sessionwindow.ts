@@ -50,7 +50,6 @@ export enum ContentViewType {
 }
 
 export interface IServerInfo {
-  nativeDesktop?: boolean;
   type: 'local' | 'remote';
   url?: string;
   persistSessionData?: boolean;
@@ -453,34 +452,6 @@ export class SessionWindow implements IDisposable {
       this._window.unmaximize();
     });
 
-    this._evm.registerEventHandler(
-      EventTypeMain.OpenNativeDesktop,
-      async event => {
-        const server = this._server?.server;
-        if (
-          !server ||
-          server.info.engine !== 'crumblecracker' ||
-          event.senderFrame !== event.sender.mainFrame
-        ) {
-          return;
-        }
-        const fromTitlebar =
-          event.sender === this._titleBarView?.view.webContents &&
-          event.sender.getURL().startsWith('data:text/html');
-        const fromLab =
-          event.sender === this._labView?.view.webContents &&
-          new URL(event.sender.getURL()).origin === server.info.url.origin;
-        if (!fromTitlebar && !fromLab) {
-          return;
-        }
-        try {
-          await server.openDesktop();
-        } catch (error) {
-          dialog.showErrorBox('Could not open native desktop', String(error));
-        }
-      }
-    );
-
     this._evm.registerEventHandler(EventTypeMain.CloseWindow, event => {
       if (event.sender !== this._titleBarView?.view?.webContents) {
         return;
@@ -524,7 +495,7 @@ export class SessionWindow implements IDisposable {
             ? '<div class="message-row"><a href="https://docs.docker.com/engine/install/">Install Docker</a></div>'
             : this._engineType === 'podman'
             ? '<div class="message-row"><a href="https://podman.io/docs/installation">Install Podman</a></div>'
-            : '<div class="message-row">Check the bundled CrumbleCracker runtime and virtualization support.</div>';
+            : '<div class="message-row"><a href="https://www.neurodesk.org/docs/getting-started/local/neurodeskapp/#install-qemu">Install QEMU</a></div>';
         let engineName =
           this._engineType.charAt(0).toUpperCase() + this._engineType.slice(1);
 
@@ -533,9 +504,7 @@ export class SessionWindow implements IDisposable {
         } catch (error) {
           this._showProgressView(
             `Failed to create session!\nCheck if ${
-              this._engineType === 'crumblecracker'
-                ? 'CrumbleCracker'
-                : engineName
+              this._engineType === 'tinyrange' ? 'QEMU' : engineName
             } is running and try again.`,
             `
             <div class="message-row">${error}</div>
@@ -761,7 +730,6 @@ export class SessionWindow implements IDisposable {
         const info = this._server?.server.info;
         const serverInfo: IServerInfo = {
           type: 'local',
-          nativeDesktop: info.engine === 'crumblecracker',
           workingDirectory: info.workingDirectory,
           url: this._sessionConfig.url?.href
         };

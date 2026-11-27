@@ -27,5 +27,3 @@ env_installer/
 !env_installer/construct.yaml
 .agents/
 tinyrange/
-crumblecracker/
-.backend-source/
